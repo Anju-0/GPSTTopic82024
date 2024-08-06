@@ -1,4 +1,10 @@
 using GPSTTopic82024
-file = "ENWL.dss"
+using PowerModelsDistribution
+using Ipopt
+file = "data/ENWLNW1F1/Master.dss"
+eng4w = parse_file(file, transformations=[transform_loops!,remove_all_bounds!])
+eng4w["settings"]["sbase_default"] = 1
+math4w = transform_data_model(eng4w, kron_reduce=false, phase_project=false)
+ipopt = Ipopt.Optimizer
 
-solve_mc_doe()
+res = solve_mc_doe(math4w, ipopt)
