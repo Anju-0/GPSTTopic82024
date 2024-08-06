@@ -2,3 +2,7 @@ name = "GPSTTopic82024"
 uuid = "fdd844c1-44b3-496f-bd96-a054e1c57c85"
 authors = ["Frederik <frederik.geth@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+InfrastructureModels = "2030c09a-7f63-5d83-885d-db604e0e9cc0"
+PowerModelsDistribution = "d7431456-977f-11e9-2de3-97ff7677985e"

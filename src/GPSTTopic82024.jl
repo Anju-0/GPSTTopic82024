@@ -1,10 +1,14 @@
 module GPSTTopic82024
 
+import InfrastructureModels
+import PowerModelsDistribution
+
 const _IM = InfrastructureModels
 const _PMD = PowerModelsDistribution
 
-# Explicit imports for later export
 import InfrastructureModels: optimize_model!, @im_fields, nw_id_default, ismultinetwork, update_data!
+
+# Explicit imports for later export
 
 
 include("prob/doe.jl")
