@@ -2,13 +2,19 @@ module GPSTTopic82024
 
 import InfrastructureModels
 import PowerModelsDistribution
+import JuMP
 
 const _IM = InfrastructureModels
 const _PMD = PowerModelsDistribution
 
-import InfrastructureModels: optimize_model!, @im_fields, nw_id_default, ismultinetwork, update_data!
+const pmd_it_name = "pmd"
+const pmd_it_sym = Symbol(pmd_it_name)
 
 # Explicit imports for later export
+import InfrastructureModels: optimize_model!, @im_fields, nw_id_default, ismultinetwork, update_data!
+
+
+include("core/objective.jl")
 
 
 include("prob/doe.jl")

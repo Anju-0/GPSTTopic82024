@@ -19,30 +19,34 @@ for (i,bus) in math4w["bus"]
 end
 
 for (g,gen) in math4w["gen"]
-    gen["cost"] = 1000 .* gen["cost"]
+    gen["cost"] = 0.0
 end
 
-for (d, load) in math4w["load"]
+function add_gens!(math4w)
     gen_counter = 2
-    if mod(load["index"], 4) == 1
-        math4w["gen"]["$gen_counter"] = deepcopy(math4w["gen"]["1"])
-        math4w["gen"]["$gen_counter"]["name"] = "$gen_counter"
-        math4w["gen"]["$gen_counter"]["index"] = gen_counter
-        math4w["gen"]["$gen_counter"]["cost"] = 0.5*math4w["gen"]["1"]["cost"]
-        math4w["gen"]["$gen_counter"]["gen_bus"] = load["load_bus"]
-        math4w["gen"]["$gen_counter"]["pmax"] = 4*ones(3)
-        math4w["gen"]["$gen_counter"]["pmin"] = 0.0*ones(3)
-        math4w["gen"]["$gen_counter"]["connections"] = [1;2;3;4]
-        gen_counter = gen_counter + 1
+    for (d, load) in math4w["load"]
+        if mod(load["index"], 4) == 1
+            math4w["gen"]["$gen_counter"] = deepcopy(math4w["gen"]["1"])
+            math4w["gen"]["$gen_counter"]["name"] = "$gen_counter"
+            math4w["gen"]["$gen_counter"]["index"] = gen_counter
+            math4w["gen"]["$gen_counter"]["cost"] = 1.0 #*math4w["gen"]["1"]["cost"]
+            math4w["gen"]["$gen_counter"]["gen_bus"] = load["load_bus"]
+            math4w["gen"]["$gen_counter"]["pmax"] = 5*ones(3)
+            math4w["gen"]["$gen_counter"]["pmin"] = 0.0*ones(3)
+            math4w["gen"]["$gen_counter"]["connections"] = [1;2;3;4]
+            gen_counter = gen_counter + 1
+        end
     end
 end
+add_gens!(math4w)
 
-
-pm4w = instantiate_mc_model(
-        math4w,
-        IVRENPowerModel,
-        GPSTTopic82024.build_mc_doe;
-        multinetwork=false,
-    )
+# pm4w = instantiate_mc_model(
+#         math4w,
+#         IVRENPowerModel,
+#         GPSTTopic82024.build_mc_doe;
+#         multinetwork=false,
+#     )
 
 res = solve_mc_doe(math4w, ipopt)
+
+res["solution"]["gen"]
