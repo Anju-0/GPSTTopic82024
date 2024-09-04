@@ -50,6 +50,21 @@ xticks!([207, 230, 253, 260])
 yticks!([100,20,0])
 savefig("voltwatt.pdf")
 
+
+vwplotpu = plot(legend=:bottomleft,ylims=(0,1))
+relupu = rectifier(253/230,1,-80/7*(230/100);type=type, ϵ=ϵ)
+relu2pu =rectifier(260/230,0,+80/7*(230/100);type=type, ϵ=ϵ)
+vw_curvepu(x) = relupu(x) + relu2pu(x)
+rr =(185:0.1:276)./230
+plot!(rr,vw_curvepu.(rr), label="epsilon=$ϵ")
+title!("Volt-Watt characteristic")
+xlabel!("Voltage (V pu)")
+ylabel!("Active power (W pu)")
+xticks!([0.9, 1.0, 1.1, 1.13])
+yticks!([1,0.2,0])
+savefig("voltwattpu.pdf")
+
+##
 vvplot = plot(legend=:bottomleft)
 for ϵ in [3,2,1,0.5,0.01]
     r1 = rectifier(207,44,-44/13;type=type, ϵ=ϵ)
@@ -70,7 +85,24 @@ savefig("voltvar.pdf")
 
 plot(vvplot, vwplot,   layout=(2,1), size=(600,800))
 savefig("voltvarwatt.pdf")
+##
+ϵ=0.001
+vvplotpu = plot(legend=:bottomleft)
+r1pu = rectifier(207/230,44/100,-44/13*(230/100);type=type, ϵ=ϵ)
+r2pu = rectifier(220/230,0,+44/13*(230/100);type=type, ϵ=ϵ)
+r3pu = rectifier(240/230,0,-60/18*(230/100);type=type, ϵ=ϵ)
+r4pu = rectifier(258/230,0,+60/18*(230/100);type=type, ϵ=ϵ)
+vv_curve_pu(x) = r1pu(x) + r2pu(x) + r3pu(x) + r4pu(x)
+rr =(185:0.1:276)./230
+plot!(rr,vv_curve_pu.(rr), label="epsilon=$ϵ")
+title!("Volt-var characteristic")
+xlabel!("Voltage (V pu)")
+ylabel!("Reactive power (var pu)")
+xticks!([0.9,0.96,1.0, 1.04, 1.22])
+yticks!([44,0,-60]./100)
+savefig("voltvarpu.pdf")
 
+##
 using JuMP
 using Ipopt
 xmin = 2.0
