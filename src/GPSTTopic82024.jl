@@ -3,6 +3,7 @@ module GPSTTopic82024
 import InfrastructureModels
 import PowerModelsDistribution
 import JuMP
+import StatsFuns
 
 const _IM = InfrastructureModels
 const _PMD = PowerModelsDistribution

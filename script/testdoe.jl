@@ -40,6 +40,7 @@ function add_gens!(math4w)
 end
 add_gens!(math4w)
 
+math4w["gen"]["4"]["pmax"] = ones(3)
 # pm4w = instantiate_mc_model(
 #         math4w,
 #         IVRENPowerModel,
@@ -49,4 +50,7 @@ add_gens!(math4w)
 
 res = solve_mc_doe(math4w, ipopt)
 
-res["solution"]["gen"]
+pg_cost = [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]]
+
+v_mag = [hypot.(bus["vr"],bus["vi"]) for (b,bus) in res["solution"]["bus"]]
+
