@@ -85,5 +85,5 @@ function build_mc_doe(pm::_PMD.AbstractExplicitNeutralIVRModel)
 
     # Objective
     # _PMD.objective_mc_min_fuel_cost(pm)
-    objective_mc_max_pg_competitive(pm)
+    objective_mc_max_pg_softequitable(pm)
 end
