@@ -48,7 +48,7 @@ math4w["gen"]["4"]["pmax"] = ones(3)
 #         multinetwork=false,
 #     )
 
-res = solve_mc_doe(math4w, ipopt)
+res = GPSTTopic82024.solve_mc_doe_fair_pg_abs(math4w, ipopt)
 
 pg_cost = [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]]
 
