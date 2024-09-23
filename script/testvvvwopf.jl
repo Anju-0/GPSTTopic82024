@@ -43,7 +43,7 @@ end
 function add_gens!(math4w)
     gen_counter = 2
     for (d, load) in math4w["load"]
-        if mod(load["index"], 2) == 1
+        if mod(load["index"], 11) == 1
             # phases = 3
             phases = length(load["connections"])-1
             math4w["gen"]["$gen_counter"] = deepcopy(math4w["gen"]["1"])
@@ -84,11 +84,16 @@ v_mag = [gen["vg_pn"] for (g,gen) in res["solution"]["gen"]]
 
 
 for (b,bus) in res["solution"]["bus"]
-    bus["vpn"] = vpn = abs.((bus["vr"][1:end-1] .+ im.*bus["vi"][1:end-1]) .- bus["vr"][end] .+ im.*bus["vi"][end])
+    bus["vpn"] = vpn = abs.((bus["vr"][1:end-1] .+ im.*bus["vi"][1:end-1]) .- (bus["vr"][end] .+ im.*bus["vi"][end]))
+    bus["vm"] = vm = abs.(bus["vr"] .+ im.*bus["vi"])
 end
 
 
 for (g,gen) in math4w["gen"]
     bus = gen["gen_bus"]
-    @show res["solution"]["bus"]["$bus"]["vpn"]
+    conn = gen["connections"][1:end-1]
+    @show conn
+    @show res["solution"]["bus"]["$bus"]["vpn"] #[conn]
+    @show res["solution"]["bus"]["$bus"]["vm"] #[conn]
+    @show res["solution"]["gen"]["$g"]["vg_pn"]
 end

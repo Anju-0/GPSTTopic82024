@@ -129,16 +129,14 @@ end
 function constraint_mc_gen_vpn(pm::_PMD.ExplicitNeutralModels, id::Int; nw::Int=nw_id_default, report::Bool=true)
     generator = _PMD.ref(pm, nw, :gen, id)
     configuration = generator["configuration"]
-    N = length(generator["connections"])
     vpn = _PMD.var(pm, nw, :vg_pn, id)
-    bus = _PMD.ref(pm, nw, :bus, generator["gen_bus"])["bus_i"]
-    vr = _PMD.var(pm, nw, :vr, bus)
-    vi = _PMD.var(pm, nw, :vi, bus)
-
-    if !contains(generator["source_id"], "voltage_source.source")
-        for i in 1:(N-1)
-            JuMP.@constraint(pm.model,  (vr[i]-vr[end])^2 + (vi[i]-vi[end])^2 == vpn[i]^2)
-        end
+    # bus = _PMD.ref(pm, nw, :bus, generator["gen_bus"])["bus_i"]
+    vr = _PMD.var(pm, nw, :vr, generator["gen_bus"])
+    vi = _PMD.var(pm, nw, :vi, generator["gen_bus"])
+    phases = generator["connections"][1:end-1]
+    for (idx, p) in enumerate(phases)
+        @show idx, p, id
+        JuMP.@constraint(pm.model,  (vr[p]-vr[end])^2 + (vi[p]-vi[end])^2 == vpn[idx]^2)
     end
 end
 
