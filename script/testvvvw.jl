@@ -93,33 +93,32 @@ r2pu = rectifier(220/230,0,+44/13*(230/100);type=type, ϵ=ϵ)
 r3pu = rectifier(240/230,0,-60/18*(230/100);type=type, ϵ=ϵ)
 r4pu = rectifier(258/230,0,+60/18*(230/100);type=type, ϵ=ϵ)
 vv_curve_pu(x) = r1pu(x) + r2pu(x) + r3pu(x) + r4pu(x)
-rr =(185:0.1:276)./230
+rr =(185:0.1:280)./230
 plot!(rr,vv_curve_pu.(rr), label="epsilon=$ϵ")
 title!("Volt-var characteristic")
 xlabel!("Voltage (V pu)")
 ylabel!("Reactive power (var pu)")
-xticks!([0.9,0.96,1.0, 1.04, 1.22])
+xticks!([0.9,0.96,1.0, 1.04, 1.12])
 yticks!([44,0,-60]./100)
 savefig("voltvarpu.pdf")
 
 ##
 using JuMP
 using Ipopt
-xmin = 2.0
-ϵ = 0.0001
 
-m = Model(Ipopt.Optimizer)
-register(m, :log1pexp, 1, log1pexp; autodiff = true)
-@variable(m, x>=xmin)
-@variable(m, y11>=0)
-@NLconstraint(m, ϵ*log1pexp(x/ϵ) == y11)
+m = JuMP.Model(Ipopt.Optimizer)
+register(m, :vv_curve_pu, 1, vv_curve_pu; autodiff = true)
+@variable(m, 0.9 <=x<=1.04)
+@variable(m, y11)
+@NLconstraint(m, vv_curve_pu(x) == y11)
 @objective(m, Min, y11)
 optimize!(m)
 @show value.(x)
 @show value.(y11)
 termination_status(m)
+scatter!([value.(x)],[value.(y11)],markersize=5 )
 ##
-m2 = Model(Ipopt.Optimizer)
+m2 = JuMP.Model(Ipopt.Optimizer)
 @variable(m2, x2>=xmin)
 @variable(m2, y22>=0)
 @NLconstraint(m2, ϵ*log(1+exp(x2/ϵ)) == y22)
