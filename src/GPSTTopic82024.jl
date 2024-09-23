@@ -25,6 +25,6 @@ include("form/en_ivr.jl")
 
 export nw_id_default, optimize_model!, ismultinetwork, update_data!
 
-export solve_mc_doe
+export solve_mc_doe, solve_mc_vvvw_opf
 
 end # module GPSTTopic82024
