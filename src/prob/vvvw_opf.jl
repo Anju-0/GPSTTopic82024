@@ -28,12 +28,12 @@ function build_mc_vvvw_opf(pm::_PMD.AbstractExplicitNeutralIVRModel)
 
     # Variables
     _PMD.variable_mc_bus_voltage(pm)
-    _PMD.variable_mc_bus_voltage_magnitude_only(pm) #add for volt-var/watt
     _PMD.variable_mc_branch_current(pm)
     _PMD.variable_mc_load_current(pm)
     _PMD.variable_mc_load_power(pm)
     _PMD.variable_mc_generator_current(pm)
     _PMD.variable_mc_generator_power(pm)
+    variable_mc_generator_voltage_magnitude(pm)
     _PMD.variable_mc_transformer_current(pm)
     _PMD.variable_mc_transformer_power(pm)
     _PMD.variable_mc_switch_current(pm)
@@ -54,7 +54,9 @@ function build_mc_vvvw_opf(pm::_PMD.AbstractExplicitNeutralIVRModel)
     for id in _PMD.ids(pm, :gen)
         _PMD.constraint_mc_generator_power(pm, id)
         _PMD.constraint_mc_generator_current(pm, id)
-        constraint_mc_voltvarwatt(pm, id)
+        constraint_mc_gen_vpn(pm, id)
+        # constraint_mc_gen_voltvar(pm, id)
+        constraint_mc_gen_voltwatt(pm, id)
     end
 
     for id in _PMD.ids(pm, :load)
@@ -93,6 +95,7 @@ function build_mc_vvvw_opf(pm::_PMD.AbstractExplicitNeutralIVRModel)
 
     # Objective
     _PMD.objective_mc_min_fuel_cost(pm)
+    # objective_mc_max_pg_competitive(pm)
 end
 
 function rectifier(x,y,a;type="smooth", ϵ=ϵ)
@@ -103,7 +106,7 @@ function rectifier(x,y,a;type="smooth", ϵ=ϵ)
     end
 end
 
-function voltvar_handle(;ϵ=0.01, type="smooth")
+function voltvar_handle(;ϵ=0.0001, type="smooth")
     V_vv = [195; 207; 220; 240; 258; 276]./230
     Q_vv = [44; 44;   0;   0;  -60;  -60]./100
 
@@ -114,7 +117,7 @@ function voltvar_handle(;ϵ=0.01, type="smooth")
     vv_curve_pu(x) = r1pu(x) + r2pu(x) + r3pu(x) + r4pu(x)
 end
 
-function voltwatt_handle(;ϵ=0.01, type="smooth")
+function voltwatt_handle(;ϵ=0.0001, type="smooth")
     V_vw = [195; 253; 260; 276]./230
     P_vw = [100; 100; 20; 20]./100
 
@@ -123,57 +126,79 @@ function voltwatt_handle(;ϵ=0.01, type="smooth")
     vw_curvepu(x) = relupu(x) + relu2pu(x)
 end
 
-function constraint_mc_voltvarwatt(pm::_PMD.ExplicitNeutralModels, id::Int; nw::Int=nw_id_default, report::Bool=true)
+function constraint_mc_gen_vpn(pm::_PMD.ExplicitNeutralModels, id::Int; nw::Int=nw_id_default, report::Bool=true)
     generator = _PMD.ref(pm, nw, :gen, id)
     configuration = generator["configuration"]
-    # smax = generator["smax"]
     N = length(generator["connections"])
-    smax = 50.0*ones(N-1)
-
-    pg = _PMD.var(pm, nw, :pg, id)
-    qg = _PMD.var(pm, nw, :qg, id)
-     
-
+    vpn = _PMD.var(pm, nw, :vg_pn, id)
     bus = _PMD.ref(pm, nw, :bus, generator["gen_bus"])["bus_i"]
     vr = _PMD.var(pm, nw, :vr, bus)
     vi = _PMD.var(pm, nw, :vi, bus)
-    vm = _PMD.var(pm, nw, :vm, bus)
 
-
-    if configuration==_PMD.WYE
-        if N==2 #single-phase 
-            n_phase = generator["connections"][1]
-            n_neutral = generator["connections"][end]
-            JuMP.@constraint(pm.model,  (vr[n_phase]-vr[n_neutral])^2 + (vi[n_phase]-vi[n_neutral])^2 == vm[n_phase]^2)
-            JuMP.@constraint(pm.model, vm[2] == 0.0)
-            JuMP.@constraint(pm.model, vm[3] == 0.0)
-            JuMP.@constraint(pm.model, vm[4] == 0.0)
-            
-            # JuMP.@NLconstraint(pm.model, pg[1] <= vw_curve_pu(vm[n_phase])*smax[n_phase])
-            a = JuMP.@NLconstraint(pm.model, qg[1] <= vv_curve_pu(vm[n_phase])*smax[n_phase])
-            # println(a)
+    if !contains(generator["source_id"], "voltage_source.source")
+        for i in 1:(N-1)
+            JuMP.@constraint(pm.model,  (vr[i]-vr[end])^2 + (vi[i]-vi[end])^2 == vpn[i]^2)
         end
-        
-        if N==4 #three-phase 
-            n_neutral = 4
-            JuMP.@constraint(pm.model, (vr[1]-vr[n_neutral])^2 + (vi[1]-vi[n_neutral])^2 == vm[1]^2)
-            JuMP.@constraint(pm.model, (vr[2]-vr[n_neutral])^2 + (vi[2]-vi[n_neutral])^2 == vm[2]^2)
-            JuMP.@constraint(pm.model, (vr[3]-vr[n_neutral])^2 + (vi[3]-vi[n_neutral])^2 == vm[3]^2)
-            JuMP.@constraint(pm.model, vm[4] == 0.0)
-            
-            
-            # JuMP.@NLconstraint(pm.model,  pg[1] <= vw_curve_pu(vm[1])*smax[1])
-            # JuMP.@NLconstraint(pm.model,  pg[2] <= vw_curve_pu(vm[2])*smax[2])
-            # JuMP.@NLconstraint(pm.model , pg[3] <= vw_curve_pu(vm[3])*smax[3])
-
-            a = JuMP.@NLconstraint(pm.model, qg[1] <= vv_curve_pu(vm[1])*smax[1])
-            JuMP.@NLconstraint(pm.model, qg[2] <= vv_curve_pu(vm[2])*smax[2])
-            JuMP.@NLconstraint(pm.model, qg[3] <= vv_curve_pu(vm[3])*smax[3])
-            # println(a)
-            
-        end
-    else #Delta
-
     end
 end
 
+
+function constraint_mc_gen_voltvar(pm::_PMD.ExplicitNeutralModels, id::Int; nw::Int=nw_id_default, report::Bool=true)
+    generator = _PMD.ref(pm, nw, :gen, id)
+    configuration = generator["configuration"]
+    N = length(generator["connections"])
+    smax = 5.0*ones(N-1)
+
+    qg = _PMD.var(pm, nw, :qg, id)
+    vpn = _PMD.var(pm, nw, :vg_pn, id)
+    phases = generator["connections"][1:end-1]
+
+    if !contains(generator["source_id"], "voltage_source.source")
+        if configuration==_PMD.WYE
+            for (idx, p) in enumerate(phases)
+                JuMP.@NLconstraint(pm.model, qg[idx] == vv_curve_pu(vpn[idx])*smax[idx])
+            end
+
+        else #Delta
+            error("delta connections not supported")
+        end
+    end
+end
+
+function constraint_mc_gen_voltwatt(pm::_PMD.ExplicitNeutralModels, id::Int; nw::Int=nw_id_default, report::Bool=true)
+    generator = _PMD.ref(pm, nw, :gen, id)
+    configuration = generator["configuration"]
+    N = length(generator["connections"])
+    smax = 5.0*ones(N-1)
+    pg  = _PMD.var(pm, nw, :pg,    id)
+    vpn = _PMD.var(pm, nw, :vg_pn, id)
+    phases = generator["connections"][1:end-1]
+
+    if !contains(generator["source_id"], "voltage_source.source")
+        if configuration==_PMD.WYE
+            for (idx, p) in enumerate(phases)
+                JuMP.@NLconstraint(pm.model, pg[idx] <= vw_curve_pu(vpn[idx])*smax[idx])
+            end
+
+        else #Delta
+            error("delta connections not supported")
+        end
+    end
+end
+
+function variable_mc_generator_voltage_magnitude(pm::_PMD.AbstractUnbalancedIVRModel; nw::Int=nw_id_default, bounded::Bool=true, report::Bool=true)
+    variable_mc_generator_voltage_magnitude_phase_neutral(pm; nw=nw, bounded=bounded, report=report)
+end
+
+
+function variable_mc_generator_voltage_magnitude_phase_neutral(pm::_PMD.ExplicitNeutralModels; nw::Int=nw_id_default, bounded::Bool=true, report::Bool=true)
+    int_dim = Dict(i => _PMD._infer_int_dim_unit(gen, false) for (i,gen) in _PMD.ref(pm, nw, :gen))
+    @show int_dim
+    vg_pn = _PMD.var(pm, nw)[:vg_pn] = Dict(i => JuMP.@variable(pm.model,
+            [c in 1:int_dim[i]], base_name="$(nw)_vg_pn_$(i)",
+            start = _PMD.comp_start_value(_PMD.ref(pm, nw, :gen, i), "vg_pn_start", c, 1.0)
+        ) for i in _PMD.ids(pm, nw, :gen)
+    )
+
+    report && _IM.sol_component_value(pm, pmd_it_sym, nw, :gen, :vg_pn, _PMD.ids(pm, nw, :gen), vg_pn)
+end
