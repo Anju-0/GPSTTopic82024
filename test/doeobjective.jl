@@ -2,7 +2,6 @@
 
 @testset "doeobjective" begin
 
-
     @testset "objective_mc_max_pg_competitive" begin
         for (i,bus) in case1_math4w["bus"]
             if bus["bus_type"] != 3 && !startswith(bus["source_id"], "transformer")
@@ -21,6 +20,14 @@
         case1_math4w["gen"]["4"]["pmax"] = ones(3)
 
         res = GPSTTopic82024.solve_mc_doe_max_pg_competitive(case1_math4w, ipopt)
+
+        @test res["objective"] == 78.00000073488262
+        @test res["termination_status"] == LOCALLY_SOLVED
+        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.000000022473671, 0.0, 15.000000142481792, 15.00000014248179, 15.000000142481792, 15.000000142481788, 15.000000142481792]
+
+        # println("Obj: $(res["objective"])")
+        # println("termination: $(res["termination_status"])")
+        # println("Gen: $([gen["pg_cost"] for (g,gen) in res["solution"]["gen"]])")
     end
 
     @testset "objective_mc_fair_pg_mse" begin
@@ -40,7 +47,11 @@
 
         case1_math4w["gen"]["4"]["pmax"] = ones(3)
 
-        res = GPSTTopic82024.solve_mc_doe_max_pg_competitive(case1_math4w, ipopt)
+        res = GPSTTopic82024.solve_mc_doe_fair_pg_mse(case1_math4w, ipopt)
+
+        @test res["objective"] == 10.37500000748229
+        @test res["termination_status"] == LOCALLY_SOLVED
+        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.000000014964578, 0.0, 3.250000010465425, 3.250000010465425, 3.250000010465425, 3.250000010465421, 3.2500000104654223]
     end
 
     @testset "objective_variable_pg_fair_abs" begin
@@ -60,6 +71,10 @@
 
         case1_math4w["gen"]["4"]["pmax"] = ones(3)
 
-        res = GPSTTopic82024.solve_mc_doe_max_pg_competitive(case1_math4w, ipopt)
+        res = GPSTTopic82024.solve_mc_doe_fair_pg_abs(case1_math4w, ipopt)
+        
+        @test res["objective"] == 39.42857183020957
+        @test res["termination_status"] == LOCALLY_SOLVED
+        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.0000000269044715, 1.1093727935885338e-37, 15.000000132458675, 15.000000132458673, 15.000000132458673, 15.000000132458673, 15.000000132458675]
     end
 end
