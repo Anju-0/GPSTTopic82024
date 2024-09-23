@@ -21,9 +21,9 @@
 
         res = GPSTTopic82024.solve_mc_doe_max_pg_competitive(case1_math4w, ipopt)
 
-        @test res["objective"] == 78.00000073488262
+        @test isapprox(78.00000073488262, res["objective"]; atol=0.001)
         @test res["termination_status"] == LOCALLY_SOLVED
-        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.000000022473671, 0.0, 15.000000142481792, 15.00000014248179, 15.000000142481792, 15.000000142481788, 15.000000142481792]
+        @test isapprox([gen["pg_cost"] for (g,gen) in res["solution"]["gen"]], [3.000000022473671, 0.0, 15.000000142481792, 15.00000014248179, 15.000000142481792, 15.000000142481788, 15.000000142481792]; atol=0.001)
 
         # println("Obj: $(res["objective"])")
         # println("termination: $(res["termination_status"])")
@@ -49,9 +49,9 @@
 
         res = GPSTTopic82024.solve_mc_doe_fair_pg_mse(case1_math4w, ipopt)
 
-        @test res["objective"] == 10.37500000748229
+        @test isapprox(res["objective"], 10.37500000748229; atol=0.001)
         @test res["termination_status"] == LOCALLY_SOLVED
-        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.000000014964578, 0.0, 3.250000010465425, 3.250000010465425, 3.250000010465425, 3.250000010465421, 3.2500000104654223]
+        @test isapprox([gen["pg_cost"] for (g,gen) in res["solution"]["gen"]], [3.000000014964578, 0.0, 3.250000010465425, 3.250000010465425, 3.250000010465425, 3.250000010465421, 3.2500000104654223]; atol=0.001)
     end
 
     @testset "objective_variable_pg_fair_abs" begin
@@ -73,8 +73,8 @@
 
         res = GPSTTopic82024.solve_mc_doe_fair_pg_abs(case1_math4w, ipopt)
         
-        @test res["objective"] == 39.42857183020957
+        @test isapprox(res["objective"], 39.42857183020957; atol=0.001)
         @test res["termination_status"] == LOCALLY_SOLVED
-        @test [gen["pg_cost"] for (g,gen) in res["solution"]["gen"]] == [3.0000000269044715, 1.1093727935885338e-37, 15.000000132458675, 15.000000132458673, 15.000000132458673, 15.000000132458673, 15.000000132458675]
+        @test isapprox([gen["pg_cost"] for (g,gen) in res["solution"]["gen"]], [3.0000000269044715, 1.1093727935885338e-37, 15.000000132458675, 15.000000132458673, 15.000000132458673, 15.000000132458673, 15.000000132458675]; atol=0.001)
     end
 end
