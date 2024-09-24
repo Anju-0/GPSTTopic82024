@@ -55,7 +55,7 @@ function build_mc_vvvw_opf(pm::_PMD.AbstractExplicitNeutralIVRModel)
         _PMD.constraint_mc_generator_power(pm, id)
         _PMD.constraint_mc_generator_current(pm, id)
         constraint_mc_gen_vpn(pm, id)
-        # constraint_mc_gen_voltvar(pm, id)
+        constraint_mc_gen_voltvar(pm, id)
         constraint_mc_gen_voltwatt(pm, id)
     end
 

@@ -4,11 +4,10 @@ using Ipopt
 using Plots
 ipopt = Ipopt.Optimizer
 
-vvc = GPSTTopic82024.voltvar_handle()
-vwc = GPSTTopic82024.voltwatt_handle()
-
-plot(0.85:0.01:1.15,vvc.(0.85:0.01:1.15))
-plot(0.85:0.01:1.15,vwc.(0.85:0.01:1.15))
+vvc = GPSTTopic82024.voltvar_handle(ϵ=0.0001)
+vwc = GPSTTopic82024.voltwatt_handle(ϵ=0.0001)
+plot(0.85:0.001:1.15,vvc.(0.85:0.001:1.15))
+plot(0.85:0.001:1.15,vwc.(0.85:0.001:1.15))
 
 ## Main loop
 
