@@ -46,52 +46,12 @@ begin
 end
 
 # ╔═╡ d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
-md"""
-#### Plot 1: Voltage at Bus by Distance from Source
-"""
-
-# ╔═╡ 5c4738a3-368c-4e64-8c1d-db2f6d7a6666
 begin
-    p1 = Plots.plot(size=(600,300), ylims=[234, 251], xlims=[-Inf,0.4], widen=true)
-    # Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
-	# Plots.hline!([220, 240], linestyle=:dash, linecolor=:green, lab="Normal Range")
-    # Plots.hline!([207, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
-    Plots.xlabel!("Distance from source (km)")
-    Plots.ylabel!("Average Voltage Magnitude (V)")
-    # Plots.title!("Voltage at LoadBus by Distance from Source")
-	# Bus connections
-    local line_nr = ODSS.Lines.First()
-	local vlims = []
-    while line_nr > 0
-		voltage, dist = [], []
-        buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
-        for b in buses
-            ODSS.Circuit.SetActiveBus(b)
-            append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
-            append!(dist, ODSS.Bus.Distance())
-        end
-        Plots.plot!(dist, voltage, linecolor=:blue, label=false)
-		append!(vlims, voltage)
-		line_nr = ODSS.Lines.Next()
-    end
-    # Fix ylims
-	append!(vlims, Plots.ylims(p1))
-    Plots.ylims!((minimum(vlims), maximum(vlims)))
-	# Load buses
-	local load_nr = ODSS.Loads.First()
-    local voltage, dist = [], []
-    while load_nr > 0
-        name = ODSS.Loads.Name()
-        ODSS.Circuit.SetActiveElement("Load.$name")
-        bus1 = ODSS.Properties.Value("bus1")
-        ODSS.Circuit.SetActiveBus(bus1)
-        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
-        append!(dist, ODSS.Bus.Distance())
-        load_nr = ODSS.Loads.Next()
-    end
-    Plots.scatter!(dist, voltage, label="Load Buses", color=:red)
-	Plots.plot!(legend=true)
-    p1
+	global_ymin = [234.0]
+	global_ymax = [251.0]
+	md"""
+	#### Plot 1: Voltage at Bus by Distance from Source
+	"""
 end
 
 # ╔═╡ 1faa1dca-fc54-4655-99b9-f673ea97b096
@@ -101,19 +61,19 @@ md"We can see the Voltage fall slightly on the loads based on their distance fro
 md"## Define the PV parameters"
 
 # ╔═╡ 27137120-fdf6-48b9-b084-711476808bd4
-@bind kva_multi Slider(0:20, default=10)
+md"#### 0x $(@bind kva_multi Slider(0:20, default=10)) 20x"
 
 # ╔═╡ 92f25be4-a42f-4ea7-b08a-bdb39c63ffef
 md"Select the pv KVA as a multiplier of the load KVA: **$(kva_multi)x**"
 
 # ╔═╡ 56b0d8d7-13c9-4913-ba50-9dd18c1e0caa
-@bind Vsource_pu Slider(0.9:0.01:1.1, default=1.00)
+md"#### 0.9 p.u. $(@bind Vsource_pu Slider(0.9:0.01:1.1, default=1.00)) 1.1 p.u."
 
 # ╔═╡ 8b33b17f-51ff-41bd-910a-05a3ebae0421
 md"Adjust the voltage source by per unit of base voltage: **$(Vsource_pu) p.u.**"
 
 # ╔═╡ bcf9f14f-af77-41d6-922e-29dc1d570ec5
-@bind num_loads_per_pv Slider(4:-1:1, default=4)
+md"#### 1/4 $(@bind num_loads_per_pv Slider(4:-1:1, default=4)) 1/1"
 
 # ╔═╡ 74e02739-1fa9-461c-8423-dc162d49d904
 md"Select the number of loads per pv system:  **1 pv every $(num_loads_per_pv) loads**"
@@ -172,7 +132,7 @@ begin
     ODSS.dss("solve")
 
 	# Plot
-    p2 = Plots.plot(size=(600,300), ylims=[234, 251], xlims=[-Inf,0.4], widen=true)
+    p2 = Plots.plot(size=(600,300), ylims=[minimum(global_ymin), maximum(global_ymax)], xlims=[-Inf,0.4], widen=true)
 	Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
 	# Plots.hline!([220, 240], linestyle=:dash, linecolor=:green, lab="Normal Range")
     # Plots.hline!([207, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
@@ -195,8 +155,9 @@ begin
         line_nr = ODSS.Lines.Next()
     end
 	# Fix ylims
-	append!(vlims, Plots.ylims(p2))
-    Plots.ylims!((minimum(vlims), maximum(vlims)))
+	append!(global_ymin, minimum(vlims))
+	append!(global_ymax, maximum(vlims))
+    Plots.ylims!(minimum(global_ymin), maximum(global_ymax))
 	# Load buses
 	voltage, dist = [], []
 	for b in load_buses
@@ -217,8 +178,310 @@ begin
 	p2
 end
 
-# ╔═╡ 63c390b1-e35a-49b0-9ba3-c3bdf936f406
-p2, ODSS.dss("summary")
+# ╔═╡ 31e2071a-eec3-45c9-bfb0-4d4f289d3bf7
+md"""
+As the amount of PV on the network increases, the Voltage seen at the buses also increases, which can lead to dangerous over-voltage. To protect the network, Australia has mandated inverter control settings to limit the Active power generation and either inject or consume Reactive Power based on the observed voltage. First, let's simulate the Volt-Var control for inverters in Queensland, Australia.
+"""
+
+# ╔═╡ a4e09627-9e27-4dbc-a89a-48ba03da1657
+md"""
+#### Plot 3: Added Volt-Var control to PV inverters
+"""
+
+# ╔═╡ 2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
+begin
+	# Clear and recompile
+	ODSS.dss("""
+	    clear
+	    compile ./resources/ENWL_NW2_F5/Master.dss
+	    closedi
+	""")
+	cd("../../")
+	
+	# Add PV systems
+    local count = 0
+    local load_nr = ODSS.Loads.First()
+	local load_buses = []
+	local pv_buses = []
+    while load_nr > 0
+        count += 1
+        name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$name")
+        bus1 = ODSS.Properties.Value("bus1")
+		push!(load_buses, bus1)
+		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+        if (count % num_loads_per_pv == 0)
+            # Add PV system
+            name = "PV_" * name
+            phases = ODSS.Loads.Phases()
+            kV = ODSS.Loads.kV()
+            kVA = ODSS.Loads.kVABase() * kva_multi
+            
+            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+			push!(pv_buses, bus1)
+        end
+        load_nr = ODSS.Loads.Next()
+    end
+	
+	# Update Vsource pu
+	local vs_nr = ODSS.Vsources.First()
+    while vs_nr > 0
+        ODSS.Vsources.PU(Vsource_pu)
+        vs_nr = ODSS.Vsources.Next()
+    end
+
+    # Add inverter control
+    ODSS.dss("""
+        New XYCurve.VoltVarCurve npts=4 Yarray=(0.44,0,0,-0.6) Xarray=(0.9,0.9565,1.0435,1.1217)
+        New InvControl.pv_VV_VW mode=VoltVar voltage_curvex_ref=rated vvc_curve1=VoltVarCurve
+		Set Maxcontroliter=100
+        Set Maxiter=100
+    """)
+
+	# Re-solve
+    ODSS.dss("solve")
+
+	# Plot
+    p3 = Plots.plot(size=(600,300), ylims=[minimum(global_ymin), maximum(global_ymax)], xlims=[-Inf,0.4], widen=true)
+	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
+	Plots.hline!([220, 240], linestyle=:dash, linecolor=:green, lab="Normal Range")
+    Plots.hline!([207, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
+    Plots.xlabel!("Distance from source (km)")
+    Plots.ylabel!("Average Voltage Magnitude (V)")
+    # Plots.title!("Voltage at LoadBus by Distance from Source")
+	# Bus connections
+    local line_nr = ODSS.Lines.First()
+	local vlims = []
+    while line_nr > 0
+        voltage, dist = [], []
+        buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
+        for b in buses
+            ODSS.Circuit.SetActiveBus(b)
+            append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+            append!(dist, ODSS.Bus.Distance())
+        end
+        Plots.plot!(dist, voltage, linecolor=:blue, label=false)
+		append!(vlims, voltage)
+        line_nr = ODSS.Lines.Next()
+    end
+	# Fix ylims
+	append!(global_ymin, minimum(vlims))
+	append!(global_ymax, maximum(vlims))
+    Plots.ylims!(minimum(global_ymin), maximum(global_ymax))
+	# Load buses
+	local voltage, dist = [], []
+	for b in load_buses
+		ODSS.Circuit.SetActiveBus(b)
+        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+        append!(dist, ODSS.Bus.Distance())
+	end
+    Plots.scatter!(dist, voltage, label="Load Buses", color=:red)
+	# PV Buses
+    local voltage, dist = [], []
+	for b in pv_buses
+		ODSS.Circuit.SetActiveBus(b)
+        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+        append!(dist, ODSS.Bus.Distance())
+	end
+    Plots.scatter!(dist, voltage, label="PV Buses", color=:yellow)
+	Plots.plot!(legend=true)
+	p3
+end
+
+# ╔═╡ 5c4738a3-368c-4e64-8c1d-db2f6d7a6666
+begin
+	p2, p3
+	# Clear & compile
+	ODSS.dss("""
+	    clear
+	    compile ./resources/ENWL_NW2_F5/Master.dss
+		solve
+		summary
+	    closedi
+	""")
+	cd("../../")
+
+	# Plot
+	ymin = minimum(global_ymin)
+	ymax = maximum(global_ymax)
+    p1 = Plots.plot(size=(600,300), ylims=[ymin, ymax], xlims=[-Inf,0.4], widen=true)
+    # Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
+	# Plots.hline!([220, 240], linestyle=:dash, linecolor=:green, lab="Normal Range")
+    # Plots.hline!([207, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
+    Plots.xlabel!("Distance from source (km)")
+    Plots.ylabel!("Average Voltage Magnitude (V)")
+    # Plots.title!("Voltage at LoadBus by Distance from Source")
+	# Bus connections
+    local line_nr = ODSS.Lines.First()
+	local vlims = []
+    while line_nr > 0
+		voltage, dist = [], []
+        buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
+        for b in buses
+            ODSS.Circuit.SetActiveBus(b)
+            append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+            append!(dist, ODSS.Bus.Distance())
+        end
+        Plots.plot!(dist, voltage, linecolor=:blue, label=false)
+		append!(vlims, voltage)
+		line_nr = ODSS.Lines.Next()
+    end
+    # Fix ylims
+	ymin = minimum(vlims)
+	ymax = maximum(vlims)
+	if ymin < minimum(global_ymin)
+		append!(global_ymin, ylim)
+	end
+	if ymax < maximum(global_ymax)
+		append!(global_ymax, ymax)
+	end
+	
+	# append!(vlims, Plots.ylims(p1))
+    # Plots.ylims!((minimum(vlims), maximum(vlims)))
+    Plots.ylims!(minimum(global_ymin), maximum(global_ymax))
+	# Load buses
+	local load_nr = ODSS.Loads.First()
+    local voltage, dist = [], []
+    while load_nr > 0
+        name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$name")
+        bus1 = ODSS.Properties.Value("bus1")
+        ODSS.Circuit.SetActiveBus(bus1)
+        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+        append!(dist, ODSS.Bus.Distance())
+        load_nr = ODSS.Loads.Next()
+    end
+    Plots.scatter!(dist, voltage, label="Load Buses", color=:red)
+	Plots.plot!(legend=true)
+    p1
+end
+
+# ╔═╡ e4660c17-0cb5-4c21-b795-fbc0dfd3bc19
+md"""
+As the voltage increases outside of the normal operating range of 220-240V, the inverters absorb reactive power, limiting the voltage increase. Next, let's include the Volt-Watt control as well. 
+"""
+
+# ╔═╡ 34eeaa9b-b39c-46be-8aed-a72f0b3f66e8
+md"""
+#### Plot 4: Added Volt-Var and Volt-Watt control to PV inverters
+"""
+
+# ╔═╡ 86220e4f-8cbf-4860-8629-b9719c03d517
+begin
+	# Clear and recompile
+	ODSS.dss("""
+	    clear
+	    compile ./resources/ENWL_NW2_F5/Master.dss
+	    closedi
+	""")
+	cd("../../")
+	
+	# Add PV systems
+    local count = 0
+    local load_nr = ODSS.Loads.First()
+	local load_buses = []
+	local pv_buses = []
+    while load_nr > 0
+        count += 1
+        name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$name")
+        bus1 = ODSS.Properties.Value("bus1")
+		push!(load_buses, bus1)
+		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+        if (count % num_loads_per_pv == 0)
+            # Add PV system
+            name = "PV_" * name
+            phases = ODSS.Loads.Phases()
+            kV = ODSS.Loads.kV()
+            kVA = ODSS.Loads.kVABase() * kva_multi
+            
+            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+			push!(pv_buses, bus1)
+        end
+        load_nr = ODSS.Loads.Next()
+    end
+	
+	# Update Vsource pu
+	local vs_nr = ODSS.Vsources.First()
+    while vs_nr > 0
+        ODSS.Vsources.PU(Vsource_pu)
+        vs_nr = ODSS.Vsources.Next()
+    end
+
+    # Add inverter control
+    ODSS.dss("""
+        New XYCurve.VoltVarCurve npts=4 Yarray=(0.44,0,0,-0.6) Xarray=(0.9,0.9565,1.0435,1.1217)
+        New XYCurve.VoltWattCurve npts=4 Yarray=(1,1,1,0.2) Xarray=(0.9,0.9565,1.1,1.1304)
+        New InvControl.pv_VV_VW Combimode=VV_VW voltage_curvex_ref=rated vvc_curve1=VoltVarCurve VoltwattYAxis=PMPPPU voltwatt_curve=VoltWattCurve VoltageChangeTolerance=0.0001 VarChangeTolerance=0.025 ActivePChangeTolerance=0.01 EventLog=True
+        Set Maxcontroliter=100
+        Set Maxiter=100
+    """)
+
+	# Re-solve
+    ODSS.dss("solve")
+
+	# Plot
+    p4 = Plots.plot(size=(600,300), ylims=[minimum(global_ymin), maximum(global_ymax)], xlims=[-Inf,0.4], widen=true)
+	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
+	Plots.hline!([220, 240], linestyle=:dash, linecolor=:green, lab="Normal Range")
+    Plots.hline!([207, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
+	Plots.hline!([207, 260], linestyle=:dash, linecolor=:orange, lab="Inverter VoltWatt response range")
+    Plots.xlabel!("Distance from source (km)")
+    Plots.ylabel!("Average Voltage Magnitude (V)")
+    # Plots.title!("Voltage at LoadBus by Distance from Source")
+	# Bus connections
+    local line_nr = ODSS.Lines.First()
+	local vlims = []
+    while line_nr > 0
+        voltage, dist = [], []
+        buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
+        for b in buses
+            ODSS.Circuit.SetActiveBus(b)
+            append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+            append!(dist, ODSS.Bus.Distance())
+        end
+        Plots.plot!(dist, voltage, linecolor=:blue, label=false)
+		append!(vlims, voltage)
+        line_nr = ODSS.Lines.Next()
+    end
+	# Fix ylims
+	append!(global_ymin, minimum(vlims))
+	append!(global_ymax, maximum(vlims))
+    Plots.ylims!(minimum(global_ymin), maximum(global_ymax))
+	# Load buses
+	local voltage, dist = [], []
+	for b in load_buses
+		ODSS.Circuit.SetActiveBus(b)
+        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+        append!(dist, ODSS.Bus.Distance())
+	end
+    Plots.scatter!(dist, voltage, label="Load Buses", color=:red)
+	# PV Buses
+    local voltage, dist = [], []
+	for b in pv_buses
+		ODSS.Circuit.SetActiveBus(b)
+        append!(voltage, mean(hypot.(ODSS.Bus.Voltages())[1:3]))
+        append!(dist, ODSS.Bus.Distance())
+	end
+    Plots.scatter!(dist, voltage, label="PV Buses", color=:yellow)
+	Plots.plot!(legend=true)
+	p4
+end
+
+# ╔═╡ aaff2cc4-25fc-4b32-bd44-0e4e1202d352
+md"""
+In Queensland, the Volt-Watt control only activates when the Voltage reaches 253V, limiting the Active Power generation to a minimum of 20% when reaching 260V.
+"""
+
+# ╔═╡ 4e3bbbce-523d-4475-9eb0-63aa118b3972
+md"""
+# Summary
+"""
+
+# ╔═╡ 0fb72959-d1db-4d8f-9e2b-98482462102a
+begin
+	p5 = Plots.plot(p1, p2, p3, p4, layout=(2,2), legend=false, xlabel="", ylabel="")
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1380,7 +1643,7 @@ version = "1.4.1+1"
 # ╟─1faa1dca-fc54-4655-99b9-f673ea97b096
 # ╟─eff67dbc-94f8-4b47-8e55-a614d125707d
 # ╟─92f25be4-a42f-4ea7-b08a-bdb39c63ffef
-# ╠═27137120-fdf6-48b9-b084-711476808bd4
+# ╟─27137120-fdf6-48b9-b084-711476808bd4
 # ╟─8b33b17f-51ff-41bd-910a-05a3ebae0421
 # ╟─56b0d8d7-13c9-4913-ba50-9dd18c1e0caa
 # ╟─74e02739-1fa9-461c-8423-dc162d49d904
@@ -1388,6 +1651,14 @@ version = "1.4.1+1"
 # ╟─301c0837-ac2c-4d54-be68-620d8e55733e
 # ╟─42676b37-14c0-4efe-a724-a4eb572b879e
 # ╟─9f022aba-0f87-4db2-89e2-8e0801d518da
-# ╠═63c390b1-e35a-49b0-9ba3-c3bdf936f406
+# ╟─31e2071a-eec3-45c9-bfb0-4d4f289d3bf7
+# ╟─a4e09627-9e27-4dbc-a89a-48ba03da1657
+# ╟─2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
+# ╟─e4660c17-0cb5-4c21-b795-fbc0dfd3bc19
+# ╟─34eeaa9b-b39c-46be-8aed-a72f0b3f66e8
+# ╟─86220e4f-8cbf-4860-8629-b9719c03d517
+# ╟─aaff2cc4-25fc-4b32-bd44-0e4e1202d352
+# ╟─4e3bbbce-523d-4475-9eb0-63aa118b3972
+# ╠═0fb72959-d1db-4d8f-9e2b-98482462102a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
