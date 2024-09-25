@@ -20,11 +20,12 @@ include("core/objective.jl")
 
 include("prob/doe.jl")
 include("prob/vvvw_opf.jl")
+include("prob/vvvw_doe.jl")
 
 include("form/en_ivr.jl")
 
 export nw_id_default, optimize_model!, ismultinetwork, update_data!
 
-export solve_mc_doe, solve_mc_vvvw_opf
+export solve_mc_doe, solve_mc_vvvw_opf, solve_mc_vvvw_doe
 
 end # module GPSTTopic82024
