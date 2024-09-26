@@ -489,7 +489,7 @@ begin
 	p1t = Plots.plot(p1)
 	Plots.title!("Load only")
 	p2t = Plots.plot(p2)
-	Plots.title!("PV - no reseponse")
+	Plots.title!("PV - no response")
 	p3t = Plots.plot(p3)
 	Plots.title!("PV - Volt-var only")
 	p4t = Plots.plot(p4)
@@ -1650,7 +1650,7 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╠═7bb9ca50-591a-11ef-305f-535fc7a5fd4d
+# ╟─7bb9ca50-591a-11ef-305f-535fc7a5fd4d
 # ╠═81e6f0df-1bd7-4612-ab81-8d5f2af92a45
 # ╟─9498a586-8d9d-4b2d-bb99-2b8a49c38454
 # ╟─4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
@@ -1676,6 +1676,6 @@ version = "1.4.1+1"
 # ╟─86220e4f-8cbf-4860-8629-b9719c03d517
 # ╟─aaff2cc4-25fc-4b32-bd44-0e4e1202d352
 # ╟─4e3bbbce-523d-4475-9eb0-63aa118b3972
-# ╠═0fb72959-d1db-4d8f-9e2b-98482462102a
+# ╟─0fb72959-d1db-4d8f-9e2b-98482462102a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

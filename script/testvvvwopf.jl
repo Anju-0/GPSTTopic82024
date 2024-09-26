@@ -88,11 +88,18 @@ for (b,bus) in res["solution"]["bus"]
 end
 
 
+plot(0.85:0.001:1.15,vvc.(0.85:0.001:1.15))
 for (g,gen) in math4w["gen"]
     bus = gen["gen_bus"]
     conn = gen["connections"][1:end-1]
     @show conn
     @show res["solution"]["bus"]["$bus"]["vpn"] #[conn]
     @show res["solution"]["bus"]["$bus"]["vm"] #[conn]
-    @show res["solution"]["gen"]["$g"]["vg_pn"]
+    if g!="1"
+        vpn = res["solution"]["gen"]["$g"]["vg_pn"]
+        qg = res["solution"]["gen"]["$g"]["qg"]
+        @show vpn, qg
+        scatter!(vpn, qg./5)
+    end
 end
+title!("test")

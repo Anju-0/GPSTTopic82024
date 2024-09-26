@@ -84,7 +84,8 @@ plot!(pg_cost3, label="min absolute deviation")
 plot!(pg_cost4, label="equal")
 xlabel!("PV system number (-)")
 ylabel!("Export DOE (kW)")
-ylims!(0,5)
+ylims!(0,5.1)
+savefig("objective.pdf")
 
 # v_mag = stack([hypot.(bus["vr"],bus["vi"]) for (b,bus) in res["solution"]["bus"]], dims=1)
 
