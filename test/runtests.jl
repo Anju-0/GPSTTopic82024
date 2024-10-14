@@ -9,10 +9,12 @@ pmd_path = joinpath(dirname(pathof(PowerModelsDistribution)), "..")
 
 ipopt = Ipopt.Optimizer
 
-include("./common.jl")
+# include("./common.jl")
 include("./testcases.jl")
 
 @testset "GPSTTopic82024" begin
 
     include("doeobjective.jl")
+
+    include("vvvwdoe.jl")
 end
