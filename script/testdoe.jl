@@ -25,6 +25,7 @@ end
 function add_gens!(math4w)
     gen_counter = 2
     for (d, load) in math4w["load"]
+        println("Load Index: $(load["index"]), Load Bus Internal: $(load["load_bus"])")
         if mod(load["index"], 4) == 1
             math4w["gen"]["$gen_counter"] = deepcopy(math4w["gen"]["1"])
             math4w["gen"]["$gen_counter"]["name"] = "$gen_counter"
