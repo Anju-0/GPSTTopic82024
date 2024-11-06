@@ -4,7 +4,8 @@ using GPSTTopic82024
 using PowerModelsDistribution
 using Ipopt
 
-function simulatePvAgainstDoe(; file::String="/home/kurt/Documents/git_repositories/GPSTTopic82024/data/ENWLNW1F1/Master.dss")
+
+function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     
     pvBusses, passiveBusses = assignPvLoadBusses(file, 2)
     pvBusExportLims = runDoeSimulation(file, pvBusses)
@@ -307,3 +308,4 @@ function checkVoltageLimits(vmagAngles::Dict, ratedVoltage::Float64, lims::Vecto
         end
     end
 end
+
