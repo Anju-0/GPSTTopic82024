@@ -86,7 +86,7 @@ begin
 	vLimsPu = [0.94, 1.1]
 	voltageBase = 230.0
 
-	genToBusNames = addPv(pvBusses, 17.0, 0.23, 17.0)
+	genToBusNames = addPv(pvBusses, 8.0, 0.23, 8.0)
 	 
 	samplePv(Uniform(0.5, 1.5))
 	OpenDSSDirect.Solution.Solve()

@@ -74,7 +74,7 @@ function runDoeSimulation(file::String, pvLoadBusses::Vector{String})
         math4wModel["gen"]["$genOffs"]["index"] = genOffs
         math4wModel["gen"]["$genOffs"]["cost"] = 1.0 
         math4wModel["gen"]["$genOffs"]["gen_bus"] = interalPvBus
-        math4wModel["gen"]["$genOffs"]["pmax"] = 10.0*ones(3) # TODO: tunable inputs
+        math4wModel["gen"]["$genOffs"]["pmax"] = 5.0*ones(3) # TODO: tunable inputs
         math4wModel["gen"]["$genOffs"]["pmin"] = 0.0*ones(3)
         math4wModel["gen"]["$genOffs"]["connections"] = connections
     end
