@@ -1,6 +1,6 @@
 using Distributions
 using OpenDSSDirect
-using GPSTTopic82024
+using .GPSTTopic82024
 using PowerModelsDistribution
 using Ipopt
 
@@ -19,10 +19,17 @@ function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     vLimsPu = [0.94, 1.1]
     voltageBase = 230.0
 
-    genToBusNames = addPv(pvBusses, 6.0, 0.23, 6.0)
+    genToBusNames = addPv(pvBusses, 17.0, 0.23, 17.0)
      
     samplePv(Uniform(0.5, 1.5))
     OpenDSSDirect.Solution.Solve()
+
+    loadBusVoltages = collectAllLoadBusVMagAngle()
+    checkVoltageLimits(loadBusVoltages, voltageBase, vLimsPu)
+
+    lineCurrents = collectAllLineCurrentMagAngle()
+    checkCurrentLimits(lineCurrents) 
+
     assertDoeLims(genToBusNames, pvBusExportLims)
 
     OpenDSSDirect.Solution.Solve() 
@@ -67,7 +74,7 @@ function runDoeSimulation(file::String, pvLoadBusses::Vector{String})
         math4wModel["gen"]["$genOffs"]["index"] = genOffs
         math4wModel["gen"]["$genOffs"]["cost"] = 1.0 
         math4wModel["gen"]["$genOffs"]["gen_bus"] = interalPvBus
-        math4wModel["gen"]["$genOffs"]["pmax"] = 5.0*ones(3) # TODO: tunable inputs
+        math4wModel["gen"]["$genOffs"]["pmax"] = 10.0*ones(3) # TODO: tunable inputs
         math4wModel["gen"]["$genOffs"]["pmin"] = 0.0*ones(3)
         math4wModel["gen"]["$genOffs"]["connections"] = connections
     end
