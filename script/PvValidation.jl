@@ -1,9 +1,11 @@
 using Distributions
 using OpenDSSDirect
-using .GPSTTopic82024
 using PowerModelsDistribution
 using Ipopt
-
+using Plots
+include("./../src/GPSTTopic82024.jl")
+include("./../notebooks/PerPhasePlot.jl")
+using .GPSTTopic82024
 
 function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     
@@ -30,10 +32,13 @@ function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     lineCurrents = collectAllLineCurrentMagAngle()
     checkCurrentLimits(lineCurrents) 
 
+    plot_3ph_load()
+
     assertDoeLims(genToBusNames, pvBusExportLims)
 
     OpenDSSDirect.Solution.Solve() 
 
+    plot_3ph_load()
     loadBusVoltages = collectAllLoadBusVMagAngle()
     checkVoltageLimits(loadBusVoltages, voltageBase, vLimsPu)
 
@@ -100,6 +105,32 @@ function runDoeSimulation(file::String, pvLoadBusses::Vector{String})
     
     # pg_cost = [gen["pg_cost"] for (_, gen) in res["solution"]["gen"]]
     # v_mag = [hypot.(bus["vr"],bus["vi"]) for (_, bus) in res["solution"]["bus"]] TODO: useful voltage output format
+end
+
+function assignPvPluto(testNetwork, pvRate)
+    pvBusses, passiveBusses = assignPvLoadBusses(testNetwork, pvRate)
+	cd("../../")
+	outputStr = "Assigned OpenDSS PV Busses: ($(length(pvBusses)))\n" 
+	for i in 1:convert(Int, ceil(length(pvBusses)/5))
+		startWindow = (i - 1) * 5 + 1
+		endWindow = i * 5
+		if endWindow > length(pvBusses)
+		    outputStr *= "$(pvBusses[startWindow:end]) \n"
+		else
+			outputStr *= "$(pvBusses[startWindow:endWindow]) \n"
+		end
+	end
+	outputStr *= "Assigned OpenDSS Passive Busses: ($(length(passiveBusses)))"
+	for i in 1:convert(Int, ceil(length(passiveBusses)/5))
+		startWindow = (i - 1) * 5 + 1
+		endWindow = i * 5
+		if endWindow > length(passiveBusses)
+			outputStr *= "$(passiveBusses[startWindow:end])\n"
+		else
+			outputStr *= "$(passiveBusses[startWindow:endWindow])\n"
+		end
+	end
+    return pvBusses, passiveBusses
 end
 
 function assignPvLoadBusses(file::String, loadPerPv::Int64)::Tuple{Vector{String}, Vector{String}}
