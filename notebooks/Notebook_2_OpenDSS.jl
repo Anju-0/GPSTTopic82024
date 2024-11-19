@@ -47,67 +47,13 @@ With only loads, the voltage will drop when going deeper into the network.
 The normal voltage range is 230 +/-10%, i.e. 207 V to 253 V.
 """
 
-# ╔═╡ 3fa283fa-70dd-4b89-a859-138f8aa92e5d
-function plot_3ph_load()
-	local p = Plots.plot(size=(600,300), xlims=[-Inf,0.4], widen=true)
-	Plots.xlabel!("Distance from source (km)")
-	Plots.ylabel!("Voltage Magnitude (V)")
-	# Plots.title!("Voltage at LoadBus by Distance from Source")
-	# Bus connections
-	local line_nr = ODSS.Lines.First()
-	local vlims = []
-	while line_nr > 0
-		local voltage = [[],[],[]]
-		local dist = []
-		local buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
-		for b in buses
-			ODSS.Circuit.SetActiveBus(b)
-			[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
-			append!(dist, ODSS.Bus.Distance())
-		end
-		Plots.plot!(dist, voltage[1], linecolor=:blue, label=false)
-		Plots.plot!(dist, voltage[2], linecolor=:purple, label=false)
-		Plots.plot!(dist, voltage[3], linecolor=:green, label=false)
-		# Plots.plot!(dist, voltage[4], linecolor=:brown, label=false)
-		[append!(vlims, v) for v in voltage]
-		line_nr = ODSS.Lines.Next()
-	end
-	# Fix ylims
-	local ymin = minimum(vlims)
-	local ymax = maximum(vlims)
-	if ymin < minimum(global_ymin)
-		append!(global_ymin, ymin)
-	end
-	if ymax > maximum(global_ymax)
-		append!(global_ymax, ymax)
-	end
-	Plots.ylims!(minimum(global_ymin), maximum(global_ymax))
-	# Load buses
-	local load_nr = ODSS.Loads.First()
-	local voltage = [[],[],[]]
-	local dist = []
-	while load_nr > 0
-		local name = ODSS.Loads.Name()
-		ODSS.Circuit.SetActiveElement("Load.$name")
-		local bus1 = ODSS.Properties.Value("bus1")
-		ODSS.Circuit.SetActiveBus(bus1)
-		[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
-		append!(dist, ODSS.Bus.Distance())
-		load_nr = ODSS.Loads.Next()
-	end
-	local labels = ["Load Buses", false, false, false]
-	[Plots.scatter!(dist, voltage[i], label=labels[i], color=:red) for i in 1:length(voltage)]
-	Plots.plot!(legend=true)
-	p
-end
-
 # ╔═╡ 14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
 function plot_3ph_load_w_neutral()
 	local p = Plots.plot(size=(600,300), xlims=[-Inf,0.4], widen=true)
 	local pn = Plots.plot(size=(600,150), xlims=[-Inf,0.4], widen=true)
 	Plots.xlabel!(pn, "Distance from source (km)")
 	Plots.ylabel!(pn, "Neutral (V)")
-	Plots.ylabel!(p, "Voltage Magnitude (V)")
+	Plots.ylabel!(p, "Average Voltage Magnitude (V)")
 	# Plots.title!("Voltage at LoadBus by Distance from Source")
 	# Bus connections
 	local line_nr = ODSS.Lines.First()
@@ -155,6 +101,24 @@ function plot_3ph_load_w_neutral()
 	[Plots.scatter!(p, dist, voltage[i], label=labels[i], color=:red) for i in 1:length(labels)]
 	Plots.plot!(p, legend=true)
 	Plots.scatter!(pn, dist, voltage[4], label=false, color=:red)
+	# PV buses
+	local pv_nr = ODSS.PVsystems.First()
+	local pv_voltage = [[],[],[],[]]
+	local pv_dist = []
+	while pv_nr > 0
+		local name = ODSS.PVsystems.Name()
+		ODSS.Circuit.SetActiveElement("PVSystem.$name")
+		local bus1 = ODSS.Properties.Value("bus1")
+		ODSS.Circuit.SetActiveBus(bus1)
+		[append!(pv_voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:4]
+		append!(pv_dist, ODSS.Bus.Distance())
+		pv_nr = ODSS.PVsystems.Next()
+	end
+	local pv_labels = ["PV Buses", false, false]
+	[Plots.scatter!(p, pv_dist, pv_voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(pv_labels)]
+	Plots.plot!(p, legend=true)
+	Plots.scatter!(pn, pv_dist, pv_voltage[4], label=false, color=:yellow)
+	# Combine plots
 	l = Plots.@layout [a
 				 b{0.3h}]
 	local pt = Plots.plot(p, pn, layout=l, yguidefontvalign = :top, size=(600,450))
@@ -239,18 +203,19 @@ begin
 	# Re-solve
     ODSS.dss("solve")
 
-	# Plot
-	p2 = Plots.plot(plot_3ph_load())
-	# PV buses
-	local voltage = [[],[],[]]
-	local dist = []
-	for b in pv_buses
-		ODSS.Circuit.SetActiveBus(b)
-		[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
-        append!(dist, ODSS.Bus.Distance())
-	end
-	labels = ["PV Buses", false, false, false]
-	[Plots.scatter!(dist, voltage[i], label=labels[i], color=:yellow) for i in 1:length(voltage)]
+	# # Plot
+	# p2 = Plots.plot(plot_3ph_load())
+	# # PV buses
+	# local voltage = [[],[],[]]
+	# local dist = []
+	# for b in pv_buses
+	# 	ODSS.Circuit.SetActiveBus(b)
+	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
+ #        append!(dist, ODSS.Bus.Distance())
+	# end
+	# labels = ["PV Buses", false, false, false]
+	# [Plots.scatter!(dist, voltage[i], label=labels[i], color=:yellow) for i in 1:length(voltage)]
+	p2 = Plots.plot(plot_3ph_load_w_neutral())
 	p2
 end
 
@@ -318,22 +283,23 @@ begin
     ODSS.dss("solve")
 
 	# Plot
-	p3 = Plots.plot(plot_3ph_load())
+	# p3 = Plots.plot(plot_3ph_load())
+	p3 = Plots.plot(plot_3ph_load_w_neutral(), legend_position=:bottomleft)
 	# PV buses
-	local voltage = [[],[],[]]
-	local dist = []
-	for b in pv_buses
-		ODSS.Circuit.SetActiveBus(b)
-		[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
-        append!(dist, ODSS.Bus.Distance())
-	end
-	pv_labels = ["PV Buses", false, false, false]
-	[Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
+	# local voltage = [[],[],[]]
+	# local dist = []
+	# for b in pv_buses
+	# 	ODSS.Circuit.SetActiveBus(b)
+	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
+ #        append!(dist, ODSS.Bus.Distance())
+	# end
+	# pv_labels = ["PV Buses", false, false, false]
+	# [Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
 	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
 	Plots.hline!([207, 253], linestyle=:dash, linecolor=:green, lab="Normal Range")
     Plots.hline!([240, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
-    Plots.xlabel!("Distance from source (km)")
-    Plots.ylabel!("Average Voltage Magnitude (V)")
+    # Plots.xlabel!("Distance from source (km)")
+    # Plots.ylabel!("Average Voltage Magnitude (V)")
     # Plots.title!("Voltage at LoadBus by Distance from Source")
 	p3
 end
@@ -451,25 +417,41 @@ begin
     ODSS.dss("solve")
 
 	# Plot
-    p4 = Plots.plot(plot_3ph_load())
+    # p4 = Plots.plot(plot_3ph_load())
+	p4 = Plots.plot(plot_3ph_load_w_neutral(), legend_position=:bottomleft)
 	# PV buses
-	local voltage = [[],[],[]]
-	local dist = []
-	for b in pv_buses
-		ODSS.Circuit.SetActiveBus(b)
-		[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
-        append!(dist, ODSS.Bus.Distance())
-	end
-	local pv_labels = ["PV Buses", false, false, false]
-	[Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
+	# local voltage = [[],[],[]]
+	# local dist = []
+	# for b in pv_buses
+	# 	ODSS.Circuit.SetActiveBus(b)
+	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
+ #        append!(dist, ODSS.Bus.Distance())
+	# end
+	# local pv_labels = ["PV Buses", false, false, false]
+	# [Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
 	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
 	Plots.hline!([207, 253], linestyle=:dash, linecolor=:green, lab="Normal Range")
     Plots.hline!([240, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
 	Plots.hline!([253, 260], linestyle=:dash, linecolor=:orange, lab="Inverter VoltWatt response range")
-    Plots.xlabel!("Distance from source (km)")
-    Plots.ylabel!("Average Voltage Magnitude (V)")
+    # Plots.xlabel!("Distance from source (km)")
+    # Plots.ylabel!("Average Voltage Magnitude (V)")
     # Plots.title!("Voltage at LoadBus by Distance from Source")
 	p4
+end
+
+# ╔═╡ 0fb72959-d1db-4d8f-9e2b-98482462102a
+begin
+	using Measures
+	Plots.gr()
+	p1t = Plots.plot(p1)
+	Plots.title!("Load only")
+	p2t = Plots.plot(p2)
+	Plots.title!("PV - no response")
+	p3t = Plots.plot(p3)
+	Plots.title!("PV - Volt-var only")
+	p4t = Plots.plot(p4)
+	Plots.title!("PV - Volt-var/Watt")
+	p5 = Plots.plot(p1t, p2t, p3t, p4t, layout=(2,2), size=(1200,1200), left_margin = 5Plots.mm)
 end
 
 # ╔═╡ aaff2cc4-25fc-4b32-bd44-0e4e1202d352
@@ -482,31 +464,21 @@ md"""
 # Summary
 """
 
-# ╔═╡ 0fb72959-d1db-4d8f-9e2b-98482462102a
-begin
-	p1t = Plots.plot(p1)
-	Plots.title!("Load only")
-	p2t = Plots.plot(p2)
-	Plots.title!("PV - no response")
-	p3t = Plots.plot(p3)
-	Plots.title!("PV - Volt-var only")
-	p4t = Plots.plot(p4)
-	Plots.title!("PV - Volt-var/Watt")
-	p5 = Plots.plot(p1t, p2t, p3t, p4t, layout=(2,2), size=(600,800))
-end
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 OpenDSSDirect = "a8b11937-1041-50f2-9818-136bb7a8fb06"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+Measures = "~0.3.2"
 OpenDSSDirect = "~0.9.8"
 Plots = "~1.40.8"
 PlutoUI = "~0.7.60"
+Statistics = "~1.11.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -515,7 +487,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "c24b516183937ba90c1d395c312d8ca9033b33e3"
+project_hash = "6cd9f90d859e87b3325e555a3649c5e1c8c2c652"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1692,7 +1664,6 @@ version = "1.4.1+1"
 # ╠═4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
 # ╠═d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
 # ╟─0edda19e-16f0-4a8d-8dbc-cb00eb89ccb1
-# ╠═3fa283fa-70dd-4b89-a859-138f8aa92e5d
 # ╠═14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
 # ╠═5c4738a3-368c-4e64-8c1d-db2f6d7a6666
 # ╟─1faa1dca-fc54-4655-99b9-f673ea97b096
