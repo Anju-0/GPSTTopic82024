@@ -150,6 +150,12 @@ md"#### 1/4 $(@bind num_loads_per_pv Slider(4:-1:1, default=4)) 1/1"
 # ╔═╡ 74e02739-1fa9-461c-8423-dc162d49d904
 md"Select the number of loads per pv system:  **1 pv every $(num_loads_per_pv) loads**"
 
+# ╔═╡ 37886831-bc14-4bc2-8fb1-9930af130e67
+md"#### 0 Ω $(@bind rg_ohm Slider(0.0:1.0:30.0, default=0.0)) 30 Ω"
+
+# ╔═╡ 0669c645-92a1-4424-9831-fcf80d287fb5
+md"Adjust the neutral grounding by increasing the grounding resistance: **$(rg_ohm) Ω**"
+
 # ╔═╡ 301c0837-ac2c-4d54-be68-620d8e55733e
 md"### Add the PV systems update the results"
 
@@ -198,6 +204,12 @@ begin
     while vs_nr > 0
         ODSS.Vsources.PU(Vsource_pu)
         vs_nr = ODSS.Vsources.Next()
+    end
+	# Update grounding resistance pu
+	local rg_nr = ODSS.Reactors.First()
+    while rg_nr > 0
+        ODSS.Reactors.R(rg_ohm)
+        rg_nr = ODSS.Reactors.Next()
     end
 
 	# Re-solve
@@ -270,6 +282,13 @@ begin
         ODSS.Vsources.PU(Vsource_pu)
         vs_nr = ODSS.Vsources.Next()
     end
+	
+	# Update grounding resistance pu
+	local rg_nr = ODSS.Reactors.First()
+    while rg_nr > 0
+        ODSS.Reactors.R(rg_ohm)
+        rg_nr = ODSS.Reactors.Next()
+    end
 
     # Add inverter control
     ODSS.dss("""
@@ -321,6 +340,13 @@ begin
         vs_nr = ODSS.Vsources.Next()
     end
 
+	# Update grounding resistance pu
+	local rg_nr = ODSS.Reactors.First()
+    while rg_nr > 0
+        ODSS.Reactors.R(rg_ohm)
+        rg_nr = ODSS.Reactors.Next()
+    end
+
 	# Re-solve
     ODSS.dss("solve")
 	
@@ -343,6 +369,12 @@ begin
     while vs_nr > 0
         ODSS.Vsources.PU(Vsource_pu)
         vs_nr = ODSS.Vsources.Next()
+    end
+	# Update grounding resistance pu
+	local rg_nr = ODSS.Reactors.First()
+    while rg_nr > 0
+        ODSS.Reactors.R(rg_ohm)
+        rg_nr = ODSS.Reactors.Next()
     end
 
 	# Re-solve
@@ -404,6 +436,13 @@ begin
         vs_nr = ODSS.Vsources.Next()
     end
 
+	# Update grounding resistance pu
+	local rg_nr = ODSS.Reactors.First()
+    while rg_nr > 0
+        ODSS.Reactors.R(rg_ohm)
+        rg_nr = ODSS.Reactors.Next()
+    end
+	
     # Add inverter control
     ODSS.dss("""
         New XYCurve.VoltVarCurve npts=4 Yarray=(0.44,0,0,-0.6) Xarray=(0.9,0.9565,1.0435,1.1217)
@@ -1674,6 +1713,8 @@ version = "1.4.1+1"
 # ╟─56b0d8d7-13c9-4913-ba50-9dd18c1e0caa
 # ╟─74e02739-1fa9-461c-8423-dc162d49d904
 # ╟─bcf9f14f-af77-41d6-922e-29dc1d570ec5
+# ╟─0669c645-92a1-4424-9831-fcf80d287fb5
+# ╟─37886831-bc14-4bc2-8fb1-9930af130e67
 # ╟─301c0837-ac2c-4d54-be68-620d8e55733e
 # ╟─42676b37-14c0-4efe-a724-a4eb572b879e
 # ╠═9f022aba-0f87-4db2-89e2-8e0801d518da
