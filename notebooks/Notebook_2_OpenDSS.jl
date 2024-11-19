@@ -32,6 +32,20 @@ We will begin by loading a simple network using OpenDSSDirect.
 # ╔═╡ 9498a586-8d9d-4b2d-bb99-2b8a49c38454
 md"### Load the dss network and solve in snapshot mode"
 
+# ╔═╡ fd073287-2a6f-4cfd-9f7d-3a1b9b2a6b67
+function add_reactors(ohms)
+	local load_nr = ODSS.Loads.First()
+    while load_nr > 0
+        local l_name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$l_name")
+        local bus1 = ODSS.Properties.Value("bus1")
+        local r_name = "Grounding_" * l_name
+		local b_name = split(bus1, ".")[1]
+		ODSS.dss("New Reactor.$(r_name) bus1=$(b_name).4 bus2=$(b_name).0 R=$(ohms) X=1E-10")
+        load_nr = ODSS.Loads.Next()
+    end
+end
+
 # ╔═╡ d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
 begin
 	global_ymin = [240.0]
@@ -151,13 +165,37 @@ md"#### 1/4 $(@bind num_loads_per_pv Slider(4:-1:1, default=4)) 1/1"
 md"Select the number of loads per pv system:  **1 pv every $(num_loads_per_pv) loads**"
 
 # ╔═╡ 37886831-bc14-4bc2-8fb1-9930af130e67
-md"#### 0 Ω $(@bind rg_ohm Slider(0.0:1.0:30.0, default=0.0)) 30 Ω"
+md"#### 0 Ω $(@bind rg_ohm Slider(0.0:1.0:30.0, default=30.0)) 30 Ω"
 
 # ╔═╡ 0669c645-92a1-4424-9831-fcf80d287fb5
 md"Adjust the neutral grounding by increasing the grounding resistance: **$(rg_ohm) Ω**"
 
 # ╔═╡ 301c0837-ac2c-4d54-be68-620d8e55733e
 md"### Add the PV systems update the results"
+
+# ╔═╡ 1645e74e-a028-4d48-b8ea-9345c62fc37e
+function add_pv_1ph(num, multiplier)
+	local count = 0
+    local load_nr = ODSS.Loads.First()
+    while load_nr > 0
+        count += 1
+        name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$name")
+        bus1 = ODSS.Properties.Value("bus1")
+		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+        if (count % num == 0)
+            # Add PV system
+            name = "PV_" * name
+            phases = ODSS.Loads.Phases()
+            kV = ODSS.Loads.kV()
+            kVA = ODSS.Loads.kVABase() * multiplier
+            
+            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+        end
+        load_nr = ODSS.Loads.Next()
+    end
+end
+
 
 # ╔═╡ 42676b37-14c0-4efe-a724-a4eb572b879e
 md"""
@@ -175,29 +213,30 @@ begin
 	cd("../../")
 	
 	# Add PV systems
-    local count = 0
-    local load_nr = ODSS.Loads.First()
-	local load_buses = []
-	local pv_buses = []
-    while load_nr > 0
-        count += 1
-        name = ODSS.Loads.Name()
-        ODSS.Circuit.SetActiveElement("Load.$name")
-        bus1 = ODSS.Properties.Value("bus1")
-		push!(load_buses, bus1)
-		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
-        if (count % num_loads_per_pv == 0)
-            # Add PV system
-            name = "PV_" * name
-            phases = ODSS.Loads.Phases()
-            kV = ODSS.Loads.kV()
-            kVA = ODSS.Loads.kVABase() * kva_multi
+ #    local count = 0
+ #    local load_nr = ODSS.Loads.First()
+	# # local load_buses = []
+	# # local pv_buses = []
+ #    while load_nr > 0
+ #        count += 1
+ #        name = ODSS.Loads.Name()
+ #        ODSS.Circuit.SetActiveElement("Load.$name")
+ #        bus1 = ODSS.Properties.Value("bus1")
+	# 	# push!(load_buses, bus1)
+	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+ #        if (count % num_loads_per_pv == 0)
+ #            # Add PV system
+ #            name = "PV_" * name
+ #            phases = ODSS.Loads.Phases()
+ #            kV = ODSS.Loads.kV()
+ #            kVA = ODSS.Loads.kVABase() * kva_multi
             
-            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-			push!(pv_buses, bus1)
-        end
-        load_nr = ODSS.Loads.Next()
-    end
+ #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+	# 		# push!(pv_buses, bus1)
+ #        end
+ #        load_nr = ODSS.Loads.Next()
+ #    end
+	add_pv_1ph(num_loads_per_pv, kva_multi)
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -205,12 +244,8 @@ begin
         ODSS.Vsources.PU(Vsource_pu)
         vs_nr = ODSS.Vsources.Next()
     end
-	# Update grounding resistance pu
-	local rg_nr = ODSS.Reactors.First()
-    while rg_nr > 0
-        ODSS.Reactors.R(rg_ohm)
-        rg_nr = ODSS.Reactors.Next()
-    end
+	# Add reactors to load points
+	add_reactors(rg_ohm)
 
 	# Re-solve
     ODSS.dss("solve")
@@ -252,29 +287,30 @@ begin
 	cd("../../")
 	
 	# Add PV systems
-    local count = 0
-    local load_nr = ODSS.Loads.First()
-	local load_buses = []
-	local pv_buses = []
-    while load_nr > 0
-        count += 1
-        name = ODSS.Loads.Name()
-        ODSS.Circuit.SetActiveElement("Load.$name")
-        bus1 = ODSS.Properties.Value("bus1")
-		push!(load_buses, bus1)
-		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
-        if (count % num_loads_per_pv == 0)
-            # Add PV system
-            name = "PV_" * name
-            phases = ODSS.Loads.Phases()
-            kV = ODSS.Loads.kV()
-            kVA = ODSS.Loads.kVABase() * kva_multi
+ #    local count = 0
+ #    local load_nr = ODSS.Loads.First()
+	# local load_buses = []
+	# local pv_buses = []
+ #    while load_nr > 0
+ #        count += 1
+ #        name = ODSS.Loads.Name()
+ #        ODSS.Circuit.SetActiveElement("Load.$name")
+ #        bus1 = ODSS.Properties.Value("bus1")
+	# 	push!(load_buses, bus1)
+	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+ #        if (count % num_loads_per_pv == 0)
+ #            # Add PV system
+ #            name = "PV_" * name
+ #            phases = ODSS.Loads.Phases()
+ #            kV = ODSS.Loads.kV()
+ #            kVA = ODSS.Loads.kVABase() * kva_multi
             
-            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-			push!(pv_buses, bus1)
-        end
-        load_nr = ODSS.Loads.Next()
-    end
+ #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+	# 		push!(pv_buses, bus1)
+ #        end
+ #        load_nr = ODSS.Loads.Next()
+ #    end
+	add_pv_1ph(num_loads_per_pv, kva_multi)
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -283,12 +319,8 @@ begin
         vs_nr = ODSS.Vsources.Next()
     end
 	
-	# Update grounding resistance pu
-	local rg_nr = ODSS.Reactors.First()
-    while rg_nr > 0
-        ODSS.Reactors.R(rg_ohm)
-        rg_nr = ODSS.Reactors.Next()
-    end
+	# Add reactors to load points
+	add_reactors(rg_ohm)
 
     # Add inverter control
     ODSS.dss("""
@@ -303,7 +335,7 @@ begin
 
 	# Plot
 	# p3 = Plots.plot(plot_3ph_load())
-	p3 = Plots.plot(plot_3ph_load_w_neutral(), legend_position=:bottomleft)
+	p3 = Plots.plot(plot_3ph_load_w_neutral())#, legend_position=:bottomleft)
 	# PV buses
 	# local voltage = [[],[],[]]
 	# local dist = []
@@ -340,12 +372,8 @@ begin
         vs_nr = ODSS.Vsources.Next()
     end
 
-	# Update grounding resistance pu
-	local rg_nr = ODSS.Reactors.First()
-    while rg_nr > 0
-        ODSS.Reactors.R(rg_ohm)
-        rg_nr = ODSS.Reactors.Next()
-    end
+	# Add reactors to load points
+	add_reactors(rg_ohm)
 
 	# Re-solve
     ODSS.dss("solve")
@@ -353,7 +381,8 @@ begin
 	cd("../../")
 
 	# Plot
-    p1 = plot_3ph_load_w_neutral()
+    p1 = Plots.plot(plot_3ph_load_w_neutral())
+	p1
 end
 
 # ╔═╡ 4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
@@ -370,12 +399,8 @@ begin
         ODSS.Vsources.PU(Vsource_pu)
         vs_nr = ODSS.Vsources.Next()
     end
-	# Update grounding resistance pu
-	local rg_nr = ODSS.Reactors.First()
-    while rg_nr > 0
-        ODSS.Reactors.R(rg_ohm)
-        rg_nr = ODSS.Reactors.Next()
-    end
+	# Add reactors to load points
+	add_reactors(rg_ohm)
 
 	# Re-solve
     ODSS.dss("solve")
@@ -405,29 +430,30 @@ begin
 	cd("../../")
 	
 	# Add PV systems
-    local count = 0
-    local load_nr = ODSS.Loads.First()
-	local load_buses = []
-	local pv_buses = []
-    while load_nr > 0
-        count += 1
-        name = ODSS.Loads.Name()
-        ODSS.Circuit.SetActiveElement("Load.$name")
-        bus1 = ODSS.Properties.Value("bus1")
-		push!(load_buses, bus1)
-		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
-        if (count % num_loads_per_pv == 0)
-            # Add PV system
-            name = "PV_" * name
-            phases = ODSS.Loads.Phases()
-            kV = ODSS.Loads.kV()
-            kVA = ODSS.Loads.kVABase() * kva_multi
+ #    local count = 0
+ #    local load_nr = ODSS.Loads.First()
+	# local load_buses = []
+	# local pv_buses = []
+ #    while load_nr > 0
+ #        count += 1
+ #        name = ODSS.Loads.Name()
+ #        ODSS.Circuit.SetActiveElement("Load.$name")
+ #        bus1 = ODSS.Properties.Value("bus1")
+	# 	push!(load_buses, bus1)
+	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
+ #        if (count % num_loads_per_pv == 0)
+ #            # Add PV system
+ #            name = "PV_" * name
+ #            phases = ODSS.Loads.Phases()
+ #            kV = ODSS.Loads.kV()
+ #            kVA = ODSS.Loads.kVABase() * kva_multi
             
-            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-			push!(pv_buses, bus1)
-        end
-        load_nr = ODSS.Loads.Next()
-    end
+ #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+	# 		push!(pv_buses, bus1)
+ #        end
+ #        load_nr = ODSS.Loads.Next()
+ #    end
+	add_pv_1ph(num_loads_per_pv, kva_multi)
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -436,12 +462,8 @@ begin
         vs_nr = ODSS.Vsources.Next()
     end
 
-	# Update grounding resistance pu
-	local rg_nr = ODSS.Reactors.First()
-    while rg_nr > 0
-        ODSS.Reactors.R(rg_ohm)
-        rg_nr = ODSS.Reactors.Next()
-    end
+	# Add reactors to load points
+	add_reactors(rg_ohm)
 	
     # Add inverter control
     ODSS.dss("""
@@ -457,7 +479,7 @@ begin
 
 	# Plot
     # p4 = Plots.plot(plot_3ph_load())
-	p4 = Plots.plot(plot_3ph_load_w_neutral(), legend_position=:bottomleft)
+	p4 = Plots.plot(plot_3ph_load_w_neutral())#, legend_position=:bottomleft)
 	# PV buses
 	# local voltage = [[],[],[]]
 	# local dist = []
@@ -478,10 +500,18 @@ begin
 	p4
 end
 
+# ╔═╡ aaff2cc4-25fc-4b32-bd44-0e4e1202d352
+md"""
+In Queensland, the Volt-Watt control only activates when the Voltage reaches 253V, limiting the Active Power generation to a minimum of 20% when reaching 260V.
+"""
+
+# ╔═╡ 4e3bbbce-523d-4475-9eb0-63aa118b3972
+md"""
+# Summary
+"""
+
 # ╔═╡ 0fb72959-d1db-4d8f-9e2b-98482462102a
 begin
-	using Measures
-	Plots.gr()
 	p1t = Plots.plot(p1)
 	Plots.title!("Load only")
 	p2t = Plots.plot(p2)
@@ -493,27 +523,15 @@ begin
 	p5 = Plots.plot(p1t, p2t, p3t, p4t, layout=(2,2), size=(1200,1200), left_margin = 5Plots.mm)
 end
 
-# ╔═╡ aaff2cc4-25fc-4b32-bd44-0e4e1202d352
-md"""
-In Queensland, the Volt-Watt control only activates when the Voltage reaches 253V, limiting the Active Power generation to a minimum of 20% when reaching 260V.
-"""
-
-# ╔═╡ 4e3bbbce-523d-4475-9eb0-63aa118b3972
-md"""
-# Summary
-"""
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 OpenDSSDirect = "a8b11937-1041-50f2-9818-136bb7a8fb06"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Measures = "~0.3.2"
 OpenDSSDirect = "~0.9.8"
 Plots = "~1.40.8"
 PlutoUI = "~0.7.60"
@@ -526,7 +544,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "6cd9f90d859e87b3325e555a3649c5e1c8c2c652"
+project_hash = "acd0a34874c335402a77fbd310252c99472fc788"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1700,11 +1718,12 @@ version = "1.4.1+1"
 # ╟─7bb9ca50-591a-11ef-305f-535fc7a5fd4d
 # ╠═81e6f0df-1bd7-4612-ab81-8d5f2af92a45
 # ╟─9498a586-8d9d-4b2d-bb99-2b8a49c38454
-# ╠═4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
-# ╠═d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
+# ╠═fd073287-2a6f-4cfd-9f7d-3a1b9b2a6b67
+# ╟─4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
+# ╟─d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
 # ╟─0edda19e-16f0-4a8d-8dbc-cb00eb89ccb1
-# ╠═14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
-# ╠═5c4738a3-368c-4e64-8c1d-db2f6d7a6666
+# ╟─14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
+# ╟─5c4738a3-368c-4e64-8c1d-db2f6d7a6666
 # ╟─1faa1dca-fc54-4655-99b9-f673ea97b096
 # ╟─eff67dbc-94f8-4b47-8e55-a614d125707d
 # ╟─92f25be4-a42f-4ea7-b08a-bdb39c63ffef
@@ -1716,6 +1735,7 @@ version = "1.4.1+1"
 # ╟─0669c645-92a1-4424-9831-fcf80d287fb5
 # ╟─37886831-bc14-4bc2-8fb1-9930af130e67
 # ╟─301c0837-ac2c-4d54-be68-620d8e55733e
+# ╟─1645e74e-a028-4d48-b8ea-9345c62fc37e
 # ╟─42676b37-14c0-4efe-a724-a4eb572b879e
 # ╠═9f022aba-0f87-4db2-89e2-8e0801d518da
 # ╟─31e2071a-eec3-45c9-bfb0-4d4f289d3bf7
