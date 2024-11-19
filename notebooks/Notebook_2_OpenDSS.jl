@@ -170,6 +170,14 @@ md"#### 0 Ω $(@bind rg_ohm Slider(0.0:1.0:30.0, default=30.0)) 30 Ω"
 # ╔═╡ 0669c645-92a1-4424-9831-fcf80d287fb5
 md"Adjust the neutral grounding by increasing the grounding resistance: **$(rg_ohm) Ω**"
 
+# ╔═╡ 8ad8c1f7-a314-4260-a4cf-596e970fd4e9
+md"""
+Toggle between single or 3-phase pv systems: $(@bind pv_phases Select([1 => "Single Phase", 3 => "Three Phase"]))
+"""
+
+# ╔═╡ cd8c1420-e2de-4b8d-8d69-8ee969bf2c70
+pv_phases
+
 # ╔═╡ 301c0837-ac2c-4d54-be68-620d8e55733e
 md"### Add the PV systems update the results"
 
@@ -179,16 +187,16 @@ function add_pv_1ph(num, multiplier)
     local load_nr = ODSS.Loads.First()
     while load_nr > 0
         count += 1
-        name = ODSS.Loads.Name()
+        local name = ODSS.Loads.Name()
         ODSS.Circuit.SetActiveElement("Load.$name")
-        bus1 = ODSS.Properties.Value("bus1")
+        local bus1 = ODSS.Properties.Value("bus1")
 		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
         if (count % num == 0)
             # Add PV system
             name = "PV_" * name
-            phases = ODSS.Loads.Phases()
-            kV = ODSS.Loads.kV()
-            kVA = ODSS.Loads.kVABase() * multiplier
+            local phases = ODSS.Loads.Phases()
+            local kV = ODSS.Loads.kV()
+            local kVA = ODSS.Loads.kVABase() * multiplier
             
             ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
         end
@@ -196,6 +204,28 @@ function add_pv_1ph(num, multiplier)
     end
 end
 
+
+# ╔═╡ 7f8d9dd3-11e3-470a-b7e3-d943379b8940
+function add_pv_3ph(num, multiplier)
+	local count = 0
+    local load_nr = ODSS.Loads.First()
+    while load_nr > 0
+        count += 1
+        local name = ODSS.Loads.Name()
+        ODSS.Circuit.SetActiveElement("Load.$name")
+        local bus1 = ODSS.Properties.Value("bus1")
+        if (count % num == 0)
+            # Add PV system
+            name = "PV_" * name
+            local kV = ODSS.Loads.kV() * sqrt(3)
+            local kVA = ODSS.Loads.kVABase() * multiplier
+			local b_name = split(bus1, ".")[1]
+            
+            ODSS.dss("New PVSystem.$(name) phases=3 bus1=$(b_name) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
+        end
+        load_nr = ODSS.Loads.Next()
+    end
+end
 
 # ╔═╡ 42676b37-14c0-4efe-a724-a4eb572b879e
 md"""
@@ -236,7 +266,11 @@ begin
  #        end
  #        load_nr = ODSS.Loads.Next()
  #    end
-	add_pv_1ph(num_loads_per_pv, kva_multi)
+	if(pv_phases == 3)
+		add_pv_3ph(num_loads_per_pv, kva_multi)
+	elseif(pv_phases == 1)
+		add_pv_1ph(num_loads_per_pv, kva_multi)
+	end
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -310,7 +344,11 @@ begin
  #        end
  #        load_nr = ODSS.Loads.Next()
  #    end
-	add_pv_1ph(num_loads_per_pv, kva_multi)
+	if(pv_phases == 3)
+		add_pv_3ph(num_loads_per_pv, kva_multi)
+	elseif(pv_phases == 1)
+		add_pv_1ph(num_loads_per_pv, kva_multi)
+	end
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -453,7 +491,11 @@ begin
  #        end
  #        load_nr = ODSS.Loads.Next()
  #    end
-	add_pv_1ph(num_loads_per_pv, kva_multi)
+	if(pv_phases == 3)
+		add_pv_3ph(num_loads_per_pv, kva_multi)
+	elseif(pv_phases == 1)
+		add_pv_1ph(num_loads_per_pv, kva_multi)
+	end
 	
 	# Update Vsource pu
 	local vs_nr = ODSS.Vsources.First()
@@ -1734,16 +1776,19 @@ version = "1.4.1+1"
 # ╟─bcf9f14f-af77-41d6-922e-29dc1d570ec5
 # ╟─0669c645-92a1-4424-9831-fcf80d287fb5
 # ╟─37886831-bc14-4bc2-8fb1-9930af130e67
+# ╟─8ad8c1f7-a314-4260-a4cf-596e970fd4e9
+# ╟─cd8c1420-e2de-4b8d-8d69-8ee969bf2c70
 # ╟─301c0837-ac2c-4d54-be68-620d8e55733e
 # ╟─1645e74e-a028-4d48-b8ea-9345c62fc37e
+# ╟─7f8d9dd3-11e3-470a-b7e3-d943379b8940
 # ╟─42676b37-14c0-4efe-a724-a4eb572b879e
-# ╠═9f022aba-0f87-4db2-89e2-8e0801d518da
+# ╟─9f022aba-0f87-4db2-89e2-8e0801d518da
 # ╟─31e2071a-eec3-45c9-bfb0-4d4f289d3bf7
 # ╟─a4e09627-9e27-4dbc-a89a-48ba03da1657
-# ╠═2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
+# ╟─2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
 # ╟─e4660c17-0cb5-4c21-b795-fbc0dfd3bc19
 # ╟─34eeaa9b-b39c-46be-8aed-a72f0b3f66e8
-# ╠═86220e4f-8cbf-4860-8629-b9719c03d517
+# ╟─86220e4f-8cbf-4860-8629-b9719c03d517
 # ╟─aaff2cc4-25fc-4b32-bd44-0e4e1202d352
 # ╟─4e3bbbce-523d-4475-9eb0-63aa118b3972
 # ╠═0fb72959-d1db-4d8f-9e2b-98482462102a
