@@ -1,9 +1,14 @@
-function plot_3ph_load()
+function plot_3ph_load(; ymax::Union{Float64, Nothing}=nothing, ymin::Union{Float64, Nothing}=nothing)
 	
 	# Bus connections
 	local line_nr = OpenDSSDirect.Lines.First()
     local vmax = -Inf
     local vmin = Inf
+
+	if ymax !== nothing || ymin !== nothing
+		local vmax = ymax
+		local vmin = ymin
+	end
 
     p1 = Plots.plot(size=(600,300), xlims=[-Inf,0.4], widen=true)
 	Plots.xlabel!("Distance from source (km)")
@@ -22,6 +27,11 @@ function plot_3ph_load()
 		Plots.plot!(dist, voltage[2], linecolor=:purple, label=false)
 		Plots.plot!(dist, voltage[3], linecolor=:green, label=false)
 
+		line_nr = OpenDSSDirect.Lines.Next()
+
+		if ymax !== nothing || ymin !== nothing
+			continue
+		end
         for v in voltage
             if v === missing || v === nothing || length(v) <= 0
                 continue
@@ -35,7 +45,6 @@ function plot_3ph_load()
                 vmax = maxV
             end
         end
-		line_nr = OpenDSSDirect.Lines.Next()
 	end
 
     Plots.ylims!(vmin, vmax)
@@ -58,5 +67,5 @@ function plot_3ph_load()
 	labels = ["Load Buses", false, false, false]
 	[Plots.scatter!(dist, voltage[i], label=labels[i], color=:red) for i in 1:length(voltage)]
 	Plots.plot!(legend=true)
-	p1
+	return p1, vmax, vmin
 end
