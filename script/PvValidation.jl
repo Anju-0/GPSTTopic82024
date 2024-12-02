@@ -7,6 +7,8 @@ include("./../src/GPSTTopic82024.jl")
 include("./../notebooks/PerPhasePlot.jl")
 using .GPSTTopic82024
 
+# Example code for plotting outputs of below
+# plot(p1,p2, size=(1200, 500), bottom_margin=10*Plots.mm, left_margin=10*Plots.mm, title=["No Limits" "With DOE Limits Applied"], dpi=1000)
 function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     
     pvBusses, passiveBusses = assignPvLoadBusses(file, 2)
@@ -23,7 +25,8 @@ function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
 
     genToBusNames = addPv(pvBusses, 17.0, 0.23, 17.0)
      
-    samplePv(Uniform(0.5, 1.5))
+    # samplePv(Uniform(0.5, 1.5))
+    samplePv(0.45)
     OpenDSSDirect.Solution.Solve()
 
     loadBusVoltages = collectAllLoadBusVMagAngle()
@@ -32,19 +35,23 @@ function simulatePvAgainstDoe(; file::String="data/ENWLNW1F1/Master.dss")
     lineCurrents = collectAllLineCurrentMagAngle()
     checkCurrentLimits(lineCurrents) 
 
-    plot_3ph_load()
+    p1, ymax, ymin = plot_3ph_load()
 
     assertDoeLims(genToBusNames, pvBusExportLims)
 
     OpenDSSDirect.Solution.Solve() 
 
-    plot_3ph_load()
+    p2, _, _ = plot_3ph_load(ymax=ymax, ymin=ymin)
+    # p2, _, _ = plot_3ph_load()
+
     loadBusVoltages = collectAllLoadBusVMagAngle()
     checkVoltageLimits(loadBusVoltages, voltageBase, vLimsPu)
 
     lineCurrents = collectAllLineCurrentMagAngle()
     checkCurrentLimits(lineCurrents) 
+    return p1, p2
 end
+
 
 function runDoeSimulation(file::String, pvLoadBusses::Vector{String})
 
@@ -225,6 +232,18 @@ function samplePv(irradianceRange::Uniform)
         irradianceSample = rand(irradianceRange)
         pvName = OpenDSSDirect.PVsystems.Name()
         OpenDSSDirect.PVsystems.Irradiance(irradianceSample)
+
+        pvNum += 1
+        pv = OpenDSSDirect.PVsystems.Next()
+    end
+end
+
+function samplePv(irradianceVal::Float64)
+    pv = OpenDSSDirect.PVsystems.First()
+    pvNum = 1
+    while pv > 0
+        pvName = OpenDSSDirect.PVsystems.Name()
+        OpenDSSDirect.PVsystems.Irradiance(irradianceVal)
 
         pvNum += 1
         pv = OpenDSSDirect.PVsystems.Next()

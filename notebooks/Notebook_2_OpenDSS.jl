@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.1
+# v0.20.3
 
 using Markdown
 using InteractiveUtils
@@ -36,13 +36,13 @@ md"### Load the dss network and solve in snapshot mode"
 
 # ╔═╡ fd073287-2a6f-4cfd-9f7d-3a1b9b2a6b67
 function add_reactors(ohms)
-	local load_nr = ODSS.Loads.First()
+	load_nr = ODSS.Loads.First()
     while load_nr > 0
-        local l_name = ODSS.Loads.Name()
+        l_name = ODSS.Loads.Name()
         ODSS.Circuit.SetActiveElement("Load.$l_name")
-        local bus1 = ODSS.Properties.Value("bus1")
-        local r_name = "Grounding_" * l_name
-		local b_name = split(bus1, ".")[1]
+        bus1 = ODSS.Properties.Value("bus1")
+        r_name = "Grounding_" * l_name
+		b_name = split(bus1, ".")[1]
 		ODSS.dss("New Reactor.$(r_name) bus1=$(b_name).4 bus2=$(b_name).0 R=$(ohms) X=1E-10")
         load_nr = ODSS.Loads.Next()
     end
@@ -65,19 +65,19 @@ The normal voltage range is 230 +/-10%, i.e. 207 V to 253 V.
 
 # ╔═╡ 14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
 function plot_3ph_load_w_neutral()
-	local p = Plots.plot(size=(600,300), xlims=[-Inf,0.4], widen=true)
-	local pn = Plots.plot(size=(600,150), xlims=[-Inf,0.4], widen=true)
+	p = Plots.plot(size=(600,300), xlims=[-Inf,0.4], widen=true)
+	pn = Plots.plot(size=(600,150), xlims=[-Inf,0.4], widen=true)
 	Plots.xlabel!(pn, "Distance from source (km)")
 	Plots.ylabel!(pn, "Neutral (V)")
 	Plots.ylabel!(p, "Average Voltage Magnitude (V)")
-	# Plots.title!("Voltage at LoadBus by Distance from Source")
+
 	# Bus connections
-	local line_nr = ODSS.Lines.First()
-	local vlims = []
+	line_nr = ODSS.Lines.First()
+	vlims = []
 	while line_nr > 0
-		local voltage = [[],[],[],[]]
-		local dist = []
-		local buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
+		voltage = [[],[],[],[]]
+		dist = []
+		buses = [ODSS.Lines.Bus1(), ODSS.Lines.Bus2()]
 		for b in buses
 			ODSS.Circuit.SetActiveBus(b)
 			[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:4]
@@ -90,9 +90,10 @@ function plot_3ph_load_w_neutral()
 		[append!(vlims, voltage[i]) for i in 1:3]
 		line_nr = ODSS.Lines.Next()
 	end
+	
 	# Fix ylims
-	local ymin = minimum(vlims)
-	local ymax = maximum(vlims)
+	ymin = minimum(vlims)
+	ymax = maximum(vlims)
 	if ymin < minimum(global_ymin)
 		append!(global_ymin, ymin)
 	end
@@ -100,45 +101,47 @@ function plot_3ph_load_w_neutral()
 		append!(global_ymax, ymax)
 	end
 	Plots.ylims!(p, minimum(global_ymin), maximum(global_ymax))
+	
 	# Load buses
-	local load_nr = ODSS.Loads.First()
-	local voltage = [[],[],[],[]]
-	local dist = []
+	load_nr = ODSS.Loads.First()
+	voltage = [[],[],[],[]]
+	dist = []
 	while load_nr > 0
-		local name = ODSS.Loads.Name()
+		name = ODSS.Loads.Name()
 		ODSS.Circuit.SetActiveElement("Load.$name")
-		local bus1 = ODSS.Properties.Value("bus1")
+		bus1 = ODSS.Properties.Value("bus1")
 		ODSS.Circuit.SetActiveBus(bus1)
 		[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:4]
 		append!(dist, ODSS.Bus.Distance())
 		load_nr = ODSS.Loads.Next()
 	end
-	local labels = ["Load Buses", false, false]
+	labels = ["Load Buses", false, false]
 	[Plots.scatter!(p, dist, voltage[i], label=labels[i], color=:red) for i in 1:length(labels)]
 	Plots.plot!(p, legend=true)
 	Plots.scatter!(pn, dist, voltage[4], label=false, color=:red)
+	
 	# PV buses
-	local pv_nr = ODSS.PVsystems.First()
-	local pv_voltage = [[],[],[],[]]
-	local pv_dist = []
+	pv_nr = ODSS.PVsystems.First()
+	pv_voltage = [[],[],[],[]]
+	pv_dist = []
 	while pv_nr > 0
-		local name = ODSS.PVsystems.Name()
+		name = ODSS.PVsystems.Name()
 		ODSS.Circuit.SetActiveElement("PVSystem.$name")
-		local bus1 = ODSS.Properties.Value("bus1")
+		bus1 = ODSS.Properties.Value("bus1")
 		ODSS.Circuit.SetActiveBus(bus1)
 		[append!(pv_voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:4]
 		append!(pv_dist, ODSS.Bus.Distance())
 		pv_nr = ODSS.PVsystems.Next()
 	end
-	local pv_labels = ["PV Buses", false, false]
+	pv_labels = ["PV Buses", false, false]
 	[Plots.scatter!(p, pv_dist, pv_voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(pv_labels)]
 	Plots.plot!(p, legend=true)
 	Plots.scatter!(pn, pv_dist, pv_voltage[4], label=false, color=:yellow)
+	
 	# Combine plots
 	l = Plots.@layout [a
 				 b{0.3h}]
-	local pt = Plots.plot(p, pn, layout=l, yguidefontvalign = :top, size=(600,450))
-	# Plots.ylabel!(pt, "Voltage Magnitude (V)")
+	pt = Plots.plot(p, pn, layout=l, yguidefontvalign = :top, size=(600,450))
 	pt
 end
 
@@ -185,20 +188,20 @@ md"### Add the PV systems update the results"
 
 # ╔═╡ 1645e74e-a028-4d48-b8ea-9345c62fc37e
 function add_pv_1ph(num, multiplier)
-	local count = 0
-    local load_nr = ODSS.Loads.First()
+	count = 0
+    load_nr = ODSS.Loads.First()
     while load_nr > 0
         count += 1
-        local name = ODSS.Loads.Name()
+        name = ODSS.Loads.Name()
         ODSS.Circuit.SetActiveElement("Load.$name")
-        local bus1 = ODSS.Properties.Value("bus1")
+        bus1 = ODSS.Properties.Value("bus1")
 		# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
         if (count % num == 0)
             # Add PV system
             name = "PV_" * name
-            local phases = ODSS.Loads.Phases()
-            local kV = ODSS.Loads.kV()
-            local kVA = ODSS.Loads.kVABase() * multiplier
+            phases = ODSS.Loads.Phases()
+            kV = ODSS.Loads.kV()
+            kVA = ODSS.Loads.kVABase() * multiplier
             
             ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
         end
@@ -209,19 +212,19 @@ end
 
 # ╔═╡ 7f8d9dd3-11e3-470a-b7e3-d943379b8940
 function add_pv_3ph(num, multiplier)
-	local count = 0
-    local load_nr = ODSS.Loads.First()
+	count = 0
+    load_nr = ODSS.Loads.First()
     while load_nr > 0
         count += 1
-        local name = ODSS.Loads.Name()
+        name = ODSS.Loads.Name()
         ODSS.Circuit.SetActiveElement("Load.$name")
-        local bus1 = ODSS.Properties.Value("bus1")
+        bus1 = ODSS.Properties.Value("bus1")
         if (count % num == 0)
             # Add PV system
             name = "PV_" * name
-            local kV = ODSS.Loads.kV() * sqrt(3)
-            local kVA = ODSS.Loads.kVABase() * multiplier
-			local b_name = split(bus1, ".")[1]
+            kV = ODSS.Loads.kV() * sqrt(3)
+            kVA = ODSS.Loads.kVABase() * multiplier
+			b_name = split(bus1, ".")[1]
             
             ODSS.dss("New PVSystem.$(name) phases=3 bus1=$(b_name) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
         end
@@ -245,29 +248,6 @@ begin
 	cd("../../")
 	
 	# Add PV systems
- #    local count = 0
- #    local load_nr = ODSS.Loads.First()
-	# # local load_buses = []
-	# # local pv_buses = []
- #    while load_nr > 0
- #        count += 1
- #        name = ODSS.Loads.Name()
- #        ODSS.Circuit.SetActiveElement("Load.$name")
- #        bus1 = ODSS.Properties.Value("bus1")
-	# 	# push!(load_buses, bus1)
-	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
- #        if (count % num_loads_per_pv == 0)
- #            # Add PV system
- #            name = "PV_" * name
- #            phases = ODSS.Loads.Phases()
- #            kV = ODSS.Loads.kV()
- #            kVA = ODSS.Loads.kVABase() * kva_multi
-            
- #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-	# 		# push!(pv_buses, bus1)
- #        end
- #        load_nr = ODSS.Loads.Next()
- #    end
 	if(pv_phases == 3)
 		add_pv_3ph(num_loads_per_pv, kva_multi)
 	elseif(pv_phases == 1)
@@ -286,18 +266,7 @@ begin
 	# Re-solve
     ODSS.dss("solve")
 
-	# # Plot
-	# p2 = Plots.plot(plot_3ph_load())
 	# # PV buses
-	# local voltage = [[],[],[]]
-	# local dist = []
-	# for b in pv_buses
-	# 	ODSS.Circuit.SetActiveBus(b)
-	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
- #        append!(dist, ODSS.Bus.Distance())
-	# end
-	# labels = ["PV Buses", false, false, false]
-	# [Plots.scatter!(dist, voltage[i], label=labels[i], color=:yellow) for i in 1:length(voltage)]
 	p2 = Plots.plot(plot_3ph_load_w_neutral())
 	p2
 end
@@ -323,29 +292,6 @@ begin
 	cd("../../")
 	
 	# Add PV systems
- #    local count = 0
- #    local load_nr = ODSS.Loads.First()
-	# local load_buses = []
-	# local pv_buses = []
- #    while load_nr > 0
- #        count += 1
- #        name = ODSS.Loads.Name()
- #        ODSS.Circuit.SetActiveElement("Load.$name")
- #        bus1 = ODSS.Properties.Value("bus1")
-	# 	push!(load_buses, bus1)
-	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
- #        if (count % num_loads_per_pv == 0)
- #            # Add PV system
- #            name = "PV_" * name
- #            phases = ODSS.Loads.Phases()
- #            kV = ODSS.Loads.kV()
- #            kVA = ODSS.Loads.kVABase() * kva_multi
-            
- #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-	# 		push!(pv_buses, bus1)
- #        end
- #        load_nr = ODSS.Loads.Next()
- #    end
 	if(pv_phases == 3)
 		add_pv_3ph(num_loads_per_pv, kva_multi)
 	elseif(pv_phases == 1)
@@ -374,24 +320,10 @@ begin
     ODSS.dss("solve")
 
 	# Plot
-	# p3 = Plots.plot(plot_3ph_load())
-	p3 = Plots.plot(plot_3ph_load_w_neutral())#, legend_position=:bottomleft)
+	p3 = Plots.plot(plot_3ph_load_w_neutral())
 	# PV buses
-	# local voltage = [[],[],[]]
-	# local dist = []
-	# for b in pv_buses
-	# 	ODSS.Circuit.SetActiveBus(b)
-	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
- #        append!(dist, ODSS.Bus.Distance())
-	# end
-	# pv_labels = ["PV Buses", false, false, false]
-	# [Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
-	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
 	Plots.hline!([207, 253], linestyle=:dash, linecolor=:green, lab="Normal Range")
     Plots.hline!([240, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
-    # Plots.xlabel!("Distance from source (km)")
-    # Plots.ylabel!("Average Voltage Magnitude (V)")
-    # Plots.title!("Voltage at LoadBus by Distance from Source")
 	p3
 end
 
@@ -470,29 +402,6 @@ begin
 	cd("../../")
 	
 	# Add PV systems
- #    local count = 0
- #    local load_nr = ODSS.Loads.First()
-	# local load_buses = []
-	# local pv_buses = []
- #    while load_nr > 0
- #        count += 1
- #        name = ODSS.Loads.Name()
- #        ODSS.Circuit.SetActiveElement("Load.$name")
- #        bus1 = ODSS.Properties.Value("bus1")
-	# 	push!(load_buses, bus1)
-	# 	# (num_loads_per_pv == 0) ? num_loads_per_pv = Inf : nothing
- #        if (count % num_loads_per_pv == 0)
- #            # Add PV system
- #            name = "PV_" * name
- #            phases = ODSS.Loads.Phases()
- #            kV = ODSS.Loads.kV()
- #            kVA = ODSS.Loads.kVABase() * kva_multi
-            
- #            ODSS.dss("New PVSystem.$(name) phases=$(phases) bus1=$(bus1) kV=$(kV) kVA=$(kVA) irrad=1 Pmpp=$(kVA*0.9) temperature=25")
-	# 		push!(pv_buses, bus1)
- #        end
- #        load_nr = ODSS.Loads.Next()
- #    end
 	if(pv_phases == 3)
 		add_pv_3ph(num_loads_per_pv, kva_multi)
 	elseif(pv_phases == 1)
@@ -522,25 +431,10 @@ begin
     ODSS.dss("solve")
 
 	# Plot
-    # p4 = Plots.plot(plot_3ph_load())
-	p4 = Plots.plot(plot_3ph_load_w_neutral())#, legend_position=:bottomleft)
-	# PV buses
-	# local voltage = [[],[],[]]
-	# local dist = []
-	# for b in pv_buses
-	# 	ODSS.Circuit.SetActiveBus(b)
-	# 	[append!(voltage[i], hypot.(ODSS.Bus.Voltages())[i]) for i in 1:3]
- #        append!(dist, ODSS.Bus.Distance())
-	# end
-	# local pv_labels = ["PV Buses", false, false, false]
-	# [Plots.scatter!(dist, voltage[i], label=pv_labels[i], color=:yellow) for i in 1:length(voltage)]
-	# Plots.hline!([240], linestyle=:dash, linecolor=:green, lab="Target Voltage")
+	p4 = Plots.plot(plot_3ph_load_w_neutral())
 	Plots.hline!([207, 253], linestyle=:dash, linecolor=:green, lab="Normal Range")
     Plots.hline!([240, 258], linestyle=:dash, linecolor=:brown, lab="Inverter VoltVar response range")
 	Plots.hline!([253, 260], linestyle=:dash, linecolor=:orange, lab="Inverter VoltWatt response range")
-    # Plots.xlabel!("Distance from source (km)")
-    # Plots.ylabel!("Average Voltage Magnitude (V)")
-    # Plots.title!("Voltage at LoadBus by Distance from Source")
 	p4
 end
 
@@ -557,13 +451,13 @@ md"""
 # ╔═╡ 0fb72959-d1db-4d8f-9e2b-98482462102a
 begin
 	p1t = Plots.plot(p1)
-	Plots.title!("Load only")
+	Plots.title!("Load Only")
 	p2t = Plots.plot(p2)
-	Plots.title!("PV - no response")
+	Plots.title!("PV - No Response")
 	p3t = Plots.plot(p3)
-	Plots.title!("PV - Volt-var only")
+	Plots.title!("PV - Volt-Var Only")
 	p4t = Plots.plot(p4)
-	Plots.title!("PV - Volt-var/Watt")
+	Plots.title!("PV - Volt-Var/Watt")
 	p5 = Plots.plot(p1t, p2t, p3t, p4t, layout=(2,2), size=(1200,1200), left_margin = 5Plots.mm)
 end
 
@@ -579,16 +473,15 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 OpenDSSDirect = "~0.9.8"
 Plots = "~1.40.8"
 PlutoUI = "~0.7.60"
-Statistics = "~1.11.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "acd0a34874c335402a77fbd310252c99472fc788"
+project_hash = "ebd755a0d4680f8af7475506e8b310f69c3fe5e9"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -598,15 +491,13 @@ version = "1.3.2"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
-version = "1.1.2"
+version = "1.1.1"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
-version = "1.11.0"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
-version = "1.11.0"
 
 [[deps.BitFlags]]
 git-tree-sha1 = "0691e34b3bb8be9307330f88d1a3c3f25466c24d"
@@ -620,9 +511,9 @@ uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+2"
 
 [[deps.CEnum]]
-git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
+git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
-version = "0.4.2"
+version = "0.5.0"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -638,9 +529,9 @@ version = "0.7.6"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "13951eb68769ad1cd460cdb2e64e5e95f1bf123d"
+git-tree-sha1 = "c785dfb1b3bfddd1da557e861b919819b82bbe5b"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.27.0"
+version = "3.27.1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -662,9 +553,9 @@ version = "0.10.0"
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
+git-tree-sha1 = "64e15186f0aa277e174aa81798f7eb8598e0157e"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.12.11"
+version = "0.13.0"
 
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
@@ -706,7 +597,6 @@ version = "0.18.20"
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
-version = "1.11.0"
 
 [[deps.Dbus_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl"]
@@ -745,9 +635,9 @@ version = "0.1.10"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "1c6317308b9dc757616f0b5cb379db10494443a7"
+git-tree-sha1 = "cc5231d52eb1771251fbd37171dbc408bcc8a1b6"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.6.2+0"
+version = "2.6.4+0"
 
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
@@ -763,7 +653,6 @@ version = "4.4.4+1"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
-version = "1.11.0"
 
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
@@ -837,9 +726,9 @@ version = "1.0.2"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "bc3f416a965ae61968c20d0ad867556367f2817d"
+git-tree-sha1 = "1336e07ba2eb75614c99496501a8f4b233e9fafe"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.9"
+version = "1.10.10"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll"]
@@ -868,7 +757,6 @@ version = "0.2.5"
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-version = "1.11.0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -952,17 +840,16 @@ version = "0.6.4"
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.6.0+0"
+version = "8.4.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
-version = "1.11.0"
 
 [[deps.LibGit2_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
 uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
-version = "1.7.2+0"
+version = "1.6.4+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
@@ -971,7 +858,6 @@ version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
-version = "1.11.0"
 
 [[deps.Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1024,7 +910,6 @@ version = "2.40.1+0"
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-version = "1.11.0"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -1044,7 +929,6 @@ version = "0.3.28"
 
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
-version = "1.11.0"
 
 [[deps.LoggingExtras]]
 deps = ["Dates", "Logging"]
@@ -1066,7 +950,6 @@ version = "0.5.13"
 [[deps.Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
-version = "1.11.0"
 
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "NetworkOptions", "Random", "Sockets"]
@@ -1077,7 +960,7 @@ version = "1.1.9"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.6+0"
+version = "2.28.2+1"
 
 [[deps.Measures]]
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
@@ -1092,11 +975,10 @@ version = "1.2.0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
-version = "1.11.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2023.12.12"
+version = "2023.1.10"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -1117,13 +999,13 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.27+1"
+version = "0.3.23+4"
 
 [[deps.OpenDSSDirect]]
-deps = ["CEnum", "DocStringExtensions", "Libdl", "LinearAlgebra", "REPL", "SparseArrays", "Test"]
-git-tree-sha1 = "bc0d68a2d93496f3890a34a47b5ef885e0bc243c"
+deps = ["CEnum", "DocStringExtensions", "Downloads", "Libdl", "LinearAlgebra", "REPL", "SparseArrays", "Test"]
+git-tree-sha1 = "e32118998c2255b4193823aac5acb075a4a72d78"
 uuid = "a8b11937-1041-50f2-9818-136bb7a8fb06"
-version = "0.9.8"
+version = "0.9.9"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1182,31 +1064,27 @@ uuid = "30392449-352a-5448-841d-b1acce4e97dc"
 version = "0.43.4+0"
 
 [[deps.Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.11.0"
-weakdeps = ["REPL"]
-
-    [deps.Pkg.extensions]
-    REPLExt = "REPL"
+version = "1.10.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
-git-tree-sha1 = "6e55c6841ce3411ccb3457ee52fc48cb698d6fb0"
+git-tree-sha1 = "41031ef3a1be6f5bbbf3e8073f210556daeae5ca"
 uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
-version = "3.2.0"
+version = "3.3.0"
 
 [[deps.PlotUtils]]
 deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "StableRNGs", "Statistics"]
-git-tree-sha1 = "650a022b2ce86c7dcfbdecf00f78afeeb20e5655"
+git-tree-sha1 = "3ca9a356cd2e113c420f2c13bea19f8d3fb1cb18"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "1.4.2"
+version = "1.4.3"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "TOML", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "45470145863035bb124ca51b320ed35d071cc6c2"
+git-tree-sha1 = "dae01f8c2e069a683d3a6e17bbae5070ab94786f"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.40.8"
+version = "1.40.9"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
@@ -1243,7 +1121,6 @@ version = "1.4.3"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-version = "1.11.0"
 
 [[deps.Qt6Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Vulkan_Loader_jll", "Xorg_libSM_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_cursor_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "libinput_jll", "xkbcommon_jll"]
@@ -1270,14 +1147,12 @@ uuid = "e99dba38-086e-5de3-a5b1-6e4c66e897c3"
 version = "6.7.1+1"
 
 [[deps.REPL]]
-deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
-version = "1.11.0"
 
 [[deps.Random]]
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-version = "1.11.0"
 
 [[deps.RecipesBase]]
 deps = ["PrecompileTools"]
@@ -1320,7 +1195,6 @@ version = "1.2.1"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
-version = "1.11.0"
 
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]
@@ -1335,7 +1209,6 @@ version = "1.2.0"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
-version = "1.11.0"
 
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
@@ -1346,7 +1219,7 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.11.0"
+version = "1.10.0"
 
 [[deps.StableRNGs]]
 deps = ["Random"]
@@ -1355,14 +1228,9 @@ uuid = "860ef19b-820b-49d6-a774-d7a799459cd3"
 version = "1.0.2"
 
 [[deps.Statistics]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "ae3bb1eb3bba077cd276bc5cfc337cc65c3075c0"
+deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.11.1"
-weakdeps = ["SparseArrays"]
-
-    [deps.Statistics.extensions]
-    SparseArraysExt = ["SparseArrays"]
+version = "1.10.0"
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1376,14 +1244,10 @@ git-tree-sha1 = "5cf7606d6cef84b543b483848d4ae08ad9832b21"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.3"
 
-[[deps.StyledStrings]]
-uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
-version = "1.11.0"
-
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.7.0+0"
+version = "7.2.1+1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1404,7 +1268,6 @@ version = "0.1.1"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-version = "1.11.0"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
@@ -1424,11 +1287,9 @@ version = "1.5.1"
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
-version = "1.11.0"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
-version = "1.11.0"
 
 [[deps.UnicodeFun]]
 deps = ["REPL"]
@@ -1481,9 +1342,9 @@ version = "1.31.0+0"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "6a451c6f33a176150f315726eba8b92fbfdb9ae7"
+git-tree-sha1 = "a2fccc6559132927d4c5dc183e3e01048c6dcbd6"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.13.4+0"
+version = "2.13.5+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "XML2_jll", "Zlib_jll"]
@@ -1732,7 +1593,7 @@ version = "1.1.6+0"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.59.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1763,8 +1624,8 @@ version = "1.4.1+1"
 # ╠═81e6f0df-1bd7-4612-ab81-8d5f2af92a45
 # ╟─9498a586-8d9d-4b2d-bb99-2b8a49c38454
 # ╠═fd073287-2a6f-4cfd-9f7d-3a1b9b2a6b67
-# ╟─4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
-# ╟─d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
+# ╠═4fe3c0fc-8a2f-4e86-a33e-7761f8cd59b6
+# ╠═d7ff1771-3d1b-4c06-8b4f-56d37e7d25da
 # ╟─0edda19e-16f0-4a8d-8dbc-cb00eb89ccb1
 # ╟─14a1a9ac-dd09-475e-8bcf-ba7c0a69695b
 # ╟─5c4738a3-368c-4e64-8c1d-db2f6d7a6666
@@ -1781,16 +1642,16 @@ version = "1.4.1+1"
 # ╟─8ad8c1f7-a314-4260-a4cf-596e970fd4e9
 # ╟─cd8c1420-e2de-4b8d-8d69-8ee969bf2c70
 # ╟─301c0837-ac2c-4d54-be68-620d8e55733e
-# ╟─1645e74e-a028-4d48-b8ea-9345c62fc37e
-# ╟─7f8d9dd3-11e3-470a-b7e3-d943379b8940
+# ╠═1645e74e-a028-4d48-b8ea-9345c62fc37e
+# ╠═7f8d9dd3-11e3-470a-b7e3-d943379b8940
 # ╟─42676b37-14c0-4efe-a724-a4eb572b879e
 # ╟─9f022aba-0f87-4db2-89e2-8e0801d518da
 # ╟─31e2071a-eec3-45c9-bfb0-4d4f289d3bf7
 # ╟─a4e09627-9e27-4dbc-a89a-48ba03da1657
-# ╟─2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
+# ╠═2bb5ed1f-0eaa-467c-ba6b-82740c1d7dc1
 # ╟─e4660c17-0cb5-4c21-b795-fbc0dfd3bc19
 # ╟─34eeaa9b-b39c-46be-8aed-a72f0b3f66e8
-# ╟─86220e4f-8cbf-4860-8629-b9719c03d517
+# ╠═86220e4f-8cbf-4860-8629-b9719c03d517
 # ╟─aaff2cc4-25fc-4b32-bd44-0e4e1202d352
 # ╟─4e3bbbce-523d-4475-9eb0-63aa118b3972
 # ╠═0fb72959-d1db-4d8f-9e2b-98482462102a

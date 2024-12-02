@@ -113,7 +113,7 @@ begin
 
 	genToBusNames = addPv(pvBusses, 8.0, 0.23, 8.0)
 	 
-	samplePv(Uniform(0.5, irradMax))
+	samplePv(irradMax)
 	OpenDSSDirect.Solution.Solve()
 
 	loadBusVoltages = collectAllLoadBusVMagAngle()
@@ -1718,8 +1718,8 @@ version = "1.4.1+1"
 # ╟─a75d1c6d-1fbf-4755-891c-3fb5c773b3b3
 # ╟─e4d44a82-293c-46df-8c07-fec5dd7fa4e2
 # ╟─2be7211d-e925-476b-863e-c50d21080121
-# ╟─c218b716-0b6a-47a5-9b6a-4723ffeb2a0c
-# ╟─dc5cdead-2d3b-41f0-a05e-8a1339f858de
+# ╠═c218b716-0b6a-47a5-9b6a-4723ffeb2a0c
+# ╠═dc5cdead-2d3b-41f0-a05e-8a1339f858de
 # ╟─77bd410f-6f29-48db-8f3d-5d658fd4a6f4
 # ╟─393103eb-a97e-465a-bdfc-292fc9f6f83c
 # ╠═bfd56fb8-a498-4447-9a42-951c30672b55

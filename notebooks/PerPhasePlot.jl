@@ -23,12 +23,19 @@ function plot_3ph_load(; ymax::Union{Float64, Nothing}=nothing, ymin::Union{Floa
             [append!(voltage[i], hypot.(OpenDSSDirect.Bus.Voltages())[i]) for i in 1:3]
 			append!(dist, OpenDSSDirect.Bus.Distance())
 		end
-		Plots.plot!(dist, voltage[1], linecolor=:blue, label=false)
-		Plots.plot!(dist, voltage[2], linecolor=:purple, label=false)
-		Plots.plot!(dist, voltage[3], linecolor=:green, label=false)
 
 		line_nr = OpenDSSDirect.Lines.Next()
 
+		if line_nr <= 0
+			Plots.plot!(dist, voltage[1], linecolor=:blue, label="Phase A")
+			Plots.plot!(dist, voltage[2], linecolor=:purple, label="Phase B")
+			Plots.plot!(dist, voltage[3], linecolor=:green, label="Phase C")
+		else
+			Plots.plot!(dist, voltage[1], linecolor=:blue, label=false)
+			Plots.plot!(dist, voltage[2], linecolor=:purple, label=false)
+			Plots.plot!(dist, voltage[3], linecolor=:green, label=false)
+		end
+		
 		if ymax !== nothing || ymin !== nothing
 			continue
 		end
@@ -49,7 +56,7 @@ function plot_3ph_load(; ymax::Union{Float64, Nothing}=nothing, ymin::Union{Floa
 
     Plots.ylims!(vmin, vmax)
     Plots.hline!([230 * 1.1], label="V Max p.u.")
-    Plots.hline!([230 * 0.94], label="V Min p.u.")
+    # Plots.hline!([230 * 0.94], label="V Min p.u.")
 
 	# Load buses
 	local load_nr = OpenDSSDirect.Loads.First()
@@ -67,5 +74,6 @@ function plot_3ph_load(; ymax::Union{Float64, Nothing}=nothing, ymin::Union{Floa
 	labels = ["Load Buses", false, false, false]
 	[Plots.scatter!(dist, voltage[i], label=labels[i], color=:red) for i in 1:length(voltage)]
 	Plots.plot!(legend=true)
+
 	return p1, vmax, vmin
 end
