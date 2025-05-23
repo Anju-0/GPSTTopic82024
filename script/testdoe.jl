@@ -80,8 +80,8 @@ for vscale in 1.00:0.01:1.10, loadscale in 0.1:0.1:1, pen in pens
                 math4w["gen"]["$gen_counter"]["gen_bus"] = load["load_bus"]
                 math4w["gen"]["$gen_counter"]["pmax"] = 5.0*ones(phases)
                 math4w["gen"]["$gen_counter"]["pmin"] = 0.0*ones(phases) 
-                math4w["gen"]["$gen_counter"]["qmax"] = 0.0*ones(phases) #PF 1 PV systems
-                math4w["gen"]["$gen_counter"]["qmin"] = -0.0*ones(phases) #PF 1 PV systems
+                math4w["gen"]["$gen_counter"]["qmax"] = 5.0*ones(phases) #PF 1 PV systems
+                math4w["gen"]["$gen_counter"]["qmin"] = -5.0*ones(phases) #PF 1 PV systems
                 math4w["gen"]["$gen_counter"]["connections"] = load["connections"]
                 math4w["gen"]["$gen_counter"]["distance"] = busnumber_dist_dict[load["load_bus"]]
                 gen_counter = gen_counter + 1
@@ -156,7 +156,7 @@ for vscale in 1.00:0.01:1.10, loadscale in 0.1:0.1:1, pen in pens
 
 
     if all_feasible
-        plot(pg_cost1a, linestyle=:dash, label="max. competitive $res_comp_obj - net. P $(round(sum(pg_ref_comp),digits=1)), Q $(round(sum(qg_ref_comp),digits=1))) ")
+        plot(pg_cost1a, linestyle=:dash, label="max. competitive $res_comp_obj - net. P $(round(sum(pg_ref_comp),digits=1)), Q $(round(sum(qg_ref_comp),digits=1))")
         # plot!(pg_cost2a, linestyle=:dot,  label="min. deviation squared $res_ms_obj - net. cons. $(round(sum(pg_ref_ms),digits=2))")
         # plot!(pg_cost3a, linestyle=:dashdotdot, label="min. absolute deviation $res_abs_obj - net. cons. $(round(sum(pg_ref_abs),digits=2))")
         plot!(pg_cost4a, linstyle=:dashdot, label="equal $res_eq_obj  - net. P $(round(sum(pg_ref_eq),digits=1)), Q $(round(sum(qg_ref_eq),digits=1))")
@@ -166,6 +166,7 @@ for vscale in 1.00:0.01:1.10, loadscale in 0.1:0.1:1, pen in pens
         ylims!(0,5.1)
         xlims!(0.5,length(pg_cost1)+0.5)
         title!("No VVWC, voltage of $vscale pu, load at $loadscale, pen $(pen[2:end])")
-        savefig("figures/NOVVVW_vsource$vscale load$loadscale pen$pen.pdf")
+        savefig("figures/NOVVVW_vsource$vscale load$loadscale pen$pen pf095.pdf")
+        savefig("figures/NOVVVW_vsource$vscale load$loadscale pen$pen pf095.png")
     end
 end
